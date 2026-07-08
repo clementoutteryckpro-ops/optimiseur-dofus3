@@ -1117,7 +1117,7 @@ function optimize(ctx){
   // recherche locale itérée : perturber le meilleur puis ré-optimiser -> échappe aux optima locaux
   const setsList=cand.__sets||[];
   let cur=bestB.slice();
-  for(let k=0;k<ITER;k++){
+  for(let k=0;k<ITER;k++){ if(typeof PROGRESS==='function'&&(k&7)===0)PROGRESS();
     const trial=cur.slice();
     if(setsList.length && _rng()<0.45){
       // perturbation « set-aware » : équipe une panoplie entière d'un coup (débloque les synergies que le swap mono-slot rate)
@@ -1431,7 +1431,7 @@ function solvePhase(cfg, wave){
     const pc=k=>(cx.parcho&&+cx.parcho[k])||0; const g=[];
     for(const c of chars){ const inv=(ELEM_CHAR[el]===c)?invest:0; g.push(`<span class="st"><i>${c}</i><b>${Math.round((S[c]||0)+inv)} <em>(${pc(c)+inv})</em></b></span>`); }
     const vita=Math.round(S['Vitalité']||0); g.push(`<span class="st"><i>Vitalité</i><b>${vita} <em>(${pc('Vitalité')})</em></b></span>`);
-    const pv=(50+5*((cx.lv||200)-1))+vita; g.push(`<span class="st"><i>Initiative</i><b>${Math.round(pv/4)+Math.round(S['Initiative']||0)}</b></span>`);
+    const pv=(50+5*((cx.lv||200)-1))+vita; g.push(`<span class="st"><i>Initiative</i><b>${Math.max(0,Math.round(pv/4)+Math.round(S['Initiative']||0))}</b></span>`);
     const line=(lbl,k,suf='')=>{ const v=Math.round(S[k]||0); return v?`<span class="st"><i>${lbl}</i><b>${suf==='%'&&v>0?'+':''}${v}${suf}</b></span>`:''; };
     ['Puissance','Dommages','Do Neutre','Do Terre','Do Feu','Do Eau','Do Air','Do Critiques'].forEach(k=>g.push(line(k,k)));
     ['Coups Critiques','% Do Armes','% Do Sorts','% Do Mêlée','% Do Distance'].forEach(k=>g.push(line(k,k,'%')));
@@ -1476,12 +1476,40 @@ function solvePhase(cfg, wave){
   }
 
   // ---- lancement ----
+  let __optiWorker=null;
+  function __buildWorker(){
+    if(__optiWorker) return Promise.resolve(__optiWorker);
+    return fetch(location.href,{cache:'no-store'}).then(function(r){return r.text();}).then(function(html){
+      var scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(function(m){return m[1];});
+      var dataS=scripts.find(function(s){return s.indexOf('const DATA =')>=0;});
+      var engS=scripts.find(function(s){return s.indexOf('function solvePhase')>=0;});
+      if(!dataS||!engS) throw new Error('scripts introuvables');
+      var glue="let PROGRESS=null;self.onmessage=function(ev){var cfg=ev.data.cfg,ph=ev.data.phases,res={};for(var i=0;i<ph.length;i++){PROGRESS=function(){self.postMessage({t:'tick'});};try{res[ph[i][0]]=solvePhase(cfg,ph[i][1]);}catch(e){self.postMessage({t:'err',m:String(e&&e.message||e)});return;}}var o;try{o=JSON.stringify(res);}catch(e){self.postMessage({t:'err',m:'clone'});return;}self.postMessage({t:'done',res:o});};";
+      __optiWorker=new Worker(URL.createObjectURL(new Blob([dataS+'\n'+engS+'\n'+glue],{type:'application/javascript'})));
+      return __optiWorker;
+    });
+  }
   function run(){
     const cfg=cfgFromUI(); __res={cfg};
-    if($('phSalle') && $('phSalle').checked) __res.salle=solvePhase(cfg,false);
-    if($('phVagues') && $('phVagues').checked) __res.vagues=solvePhase(cfg,true);
-    if(!__res.salle && !__res.vagues) __res.salle=solvePhase(cfg,false);
-    render(); applyDamage();
+    const steps=[];
+    if($('phSalle') && $('phSalle').checked) steps.push(['salle',false]);
+    if($('phVagues') && $('phVagues').checked) steps.push(['vagues',true]);
+    if(!steps.length) steps.push(['salle',false]);
+    if($('out')) $('out').innerHTML='<div style="padding:26px;text-align:center"><div style="margin-bottom:12px;font-weight:600">⚙️ Optimisation (recherche approfondie)…</div><div style="height:12px;background:rgba(255,255,255,.10);border-radius:8px;overflow:hidden;max-width:520px;margin:0 auto"><i id="optiBar" style="display:block;height:100%;width:2%;background:linear-gradient(90deg,#c9a24a,#f3d98a);transition:width .3s ease"></i></div><div id="optiPct" style="margin-top:8px;font-size:12px;opacity:.65">0 %</div></div>';
+    var bar=2;
+    function setBar(v){ bar=v; var b=$('optiBar'),p=$('optiPct'); if(b)b.style.width=Math.round(v)+'%'; if(p)p.textContent=Math.round(v)+' %'; }
+    function onTick(){ setBar(bar+(96-bar)*0.035); }
+    function finish(){ setBar(100); render(); applyDamage(); }
+    function runSync(){ for(var i=0;i<steps.length;i++) __res[steps[i][0]]=solvePhase(cfg,steps[i][1]); finish(); }
+    if(typeof Worker==='undefined' || location.protocol==='file:'){ runSync(); return; }
+    __buildWorker().then(function(w){
+      return new Promise(function(resolve,reject){
+        var to=setTimeout(function(){reject(new Error('timeout'));},180000);
+        w.onmessage=function(e){var d=e.data; if(d.t==='tick'){onTick();} else if(d.t==='err'){clearTimeout(to);reject(new Error(d.m));} else if(d.t==='done'){clearTimeout(to);resolve(JSON.parse(d.res));}};
+        w.onerror=function(){clearTimeout(to);reject(new Error('worker'));};
+        w.postMessage({cfg:cfg,phases:steps});
+      });
+    }).then(function(out){ for(var k in out) __res[k]=out[k]; finish(); }).catch(function(){ runSync(); });
   }
   function runAsync(){
     if($('err')) $('err').style.display='none';
