@@ -449,7 +449,42 @@
   #dmgPicker.hidden{display:none;}
 
   .footnote{margin-top:26px;text-align:center;color:var(--ink-mute);font-size:12px;}
-</style>
+
+    /* ===== Compaction (no-scroll par étape) ===== */
+    .wrap{padding:10px 20px 16px;}
+    .step-head{margin-bottom:8px;}
+    .step-head p{display:none;}
+    .field{margin-bottom:6px;}
+    .flabel{margin-bottom:4px;font-size:12px;}
+    .chip{padding:5px 9px;}
+    .chips{gap:7px;}
+    .seg label{padding:5px 9px;}
+    .grid3{gap:12px;}
+    .grid3 .sub{margin:2px 0;font-size:11px;}
+    #dmgPicker{padding:8px 10px;margin-bottom:8px;}
+    #dmgPicker .dp-head{margin-bottom:6px;font-size:13px;}
+    #search2{display:none;}
+    #out{grid-template-columns:1fr;gap:0;}
+    .resblock{display:none;}
+    .resblock.active{display:block;}
+    .vseg{margin-bottom:10px;}
+    .res{padding:10px 12px;}
+    .res h3{font-size:15px;margin:1px 0;}
+    .res .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:0 14px;margin:4px 0;}
+    .slotline{font-size:12px;line-height:1.3;padding:0;}
+    .stats{gap:4px;margin-top:3px;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));}
+    .st{padding:3px 6px;border-radius:7px;}
+    .st b{font-size:12px;}
+    .st i{font-size:9px;}
+    .stitle{margin-top:6px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;opacity:.72;}
+    .kv{gap:12px;font-size:12px;margin-top:6px;display:flex;flex-wrap:wrap;}
+    .kv div{white-space:nowrap;}
+    .setrow{font-size:11px;line-height:1.25;}
+    details.fold{margin-top:6px;}
+    details.fold summary{cursor:pointer;font-size:10px;text-transform:uppercase;letter-spacing:.04em;opacity:.72;font-weight:700;padding:2px 0;}
+    details.fold[open] summary{opacity:1;}
+  
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -1478,21 +1513,27 @@ function solvePhase(cfg, wave){
     return grp('Primaires',prim)+grp('Caractéristiques',car)+grp('Dommages',dmg)+grp('Résistances',rez);
   }
   function setsBlock(r){ const sets=activeSets(r.build, r.ctxUsed&&r.ctxUsed.weapon); if(!sets.length)return'';
-    return '<div class="stitle">Bonus de panoplie</div>'+sets.map(s=>`<div class="setrow"><b>${s.name}</b> <span class="small">(${s.count} pièces)</span><div class="setb">${s.bonuses.map(b=>(b.v>0?'+':'')+b.v+' '+b.st).join(' · ')}</div></div>`).join(''); }
+    return '<details class="fold"><summary>Bonus de panoplie</summary>'+sets.map(s=>`<div class="setrow"><b>${s.name}</b> <span class="small">(${s.count} pièces)</span><div class="setb">${s.bonuses.map(b=>(b.v>0?'+':'')+b.v+' '+b.st).join(' · ')}</div></div>`).join('')+'</details>'; }
   function renderCard(r,title,cls){
     const res=r.res; let head;
     if(r.__attackDmg){ head=`<div class="dmg"><b>${fmt(res.per)}</b> <span>/ coup · ${res.casts} max = ${fmt(res.turn)}/tour</span></div>`; }
     else head=`<div class="small">Choisis une arme ou un sort en haut pour chiffrer les dégâts de ce build.</div>`;
     let rows=''; (r.build||[]).forEach((it,i)=>{ const s=r.slots[i]; const tip=itemTip(it); rows+=`<div class="slotline"${tip?` title="${tip}"`:''}><span class="s">${SLOT[s]||s}</span> <span class="v">${it?it.n:'—'}</span></div>`; });
     const dfLine = res.dfPct?`<div>Dommages finaux (passifs) : <b>+${Math.round(res.dfPct)}%</b></div>`:'';
-    return `<div class="res ${cls}"><h3>${title}</h3>${head}${rows}${statsGrid(r)}${setsBlock(r)}
-      <div class="kv"><div>PA : <b>${res.pa}</b>${res.bonusPA?` <span class="small">(dont +${res.bonusPA} Ocre)</span>`:''}</div><div>PM : <b>${res.pm}</b></div><div>Crit : <b>${Math.round(res.effCC)}%</b></div>${dfLine}</div></div>`;
+    return `<div class="res ${cls}"><h3>${title}</h3>${head}<div class="slots">${rows}</div>
+      <div class="kv"><div>PA : <b>${res.pa}</b>${res.bonusPA?` <span class="small">(dont +${res.bonusPA} Ocre)</span>`:''}</div><div>PM : <b>${res.pm}</b></div><div>Crit : <b>${Math.round(res.effCC)}%</b></div>${dfLine}</div>
+      ${statsGrid(r)}${setsBlock(r)}</div>`;
   }
-
   function render(){
     const out=$('out'); if(!out)return;
-    const cards=[]; if(__res.salle)cards.push(renderCard(__res.salle,'Combat de salle','')); if(__res.vagues)cards.push(renderCard(__res.vagues,'Combat à vagues','wave'));
-    out.innerHTML=cards.join('');
+    const have=[]; if(__res.salle)have.push(['salle','Combat de salle','']); if(__res.vagues)have.push(['vagues','Combat à vagues','wave']);
+    if(!have.length){ out.innerHTML=''; return; }
+    let html='';
+    if(have.length>1){ html+='<div class="seg vseg" id="varSeg">'+have.map((h,i)=>`<label class="${i===0?'on':''}"><input type="radio" name="variant" value="${h[0]}"${i===0?' checked':''}>${h[1]}</label>`).join('')+'</div>'; }
+    html+=have.map((h,i)=>`<div class="resblock${i===0?' active':''}" data-var="${h[0]}">${renderCard(__res[h[0]],h[1],h[2])}</div>`).join('');
+    out.innerHTML=html;
+    const seg=$('varSeg');
+    if(seg){ seg.querySelectorAll('input').forEach(function(inp){ inp.addEventListener('change',function(){ const v=inp.value; out.querySelectorAll('.resblock').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-var')===v); }); seg.querySelectorAll('label').forEach(function(l){ const x=l.querySelector('input'); l.classList.toggle('on', !!(x&&x.checked)); }); }); }); }
   }
 
   // ---- dégâts post-optim avec une arme/sort ----
