@@ -1554,7 +1554,7 @@ function solvePhase(cfg, wave){
     if(!anyObj){ if($('err')){$('err').textContent='Coche au moins un élément (dégâts) ou un objectif.';$('err').style.display='block';} return; }
     if(window.showStep) window.showStep(3);
     if($('out')) $('out').innerHTML='<div class="loader">⚙️ Optimisation en cours…<div class="bar"><i></i></div></div>';
-    requestAnimationFrame(()=>setTimeout(run,20));
+    setTimeout(run,20);
   }
 
   // ---- câblage ----
