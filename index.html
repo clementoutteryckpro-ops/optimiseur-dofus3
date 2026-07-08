@@ -628,9 +628,6 @@
             <p>Deux variantes : « Combat de salle » (burst) et « Combat à vagues » (régime établi).</p>
           </div>
 
-          <!-- Le moteur injecte ici une ou deux cartes .res -->
-          <div id="out"></div>
-
           <!-- Sélecteur d'arme/sort pour afficher les vrais dégâts -->
           <div id="dmgPicker">
             <div class="dp-head"><span class="accent">✦</span> Dégâts réels — choisir une arme ou un sort</div>
@@ -646,6 +643,9 @@
               </div>
             </div>
           </div>
+
+          <!-- Le moteur injecte ici une ou deux cartes .res -->
+          <div id="out"></div>
 
           <div class="actions" style="justify-content:flex-start;">
             <button id="backEdit" class="btn btn-ghost">← Modifier</button>
@@ -1426,32 +1426,69 @@ function solvePhase(cfg, wave){
   }
 
   // ---- rendu d'une variante ----
+  function itemTip(it){
+    if(!it) return '';
+    const parts=[]; if(it.lv) parts.push('Niv '+it.lv);
+    const s=it.s||{}; for(const k in s){ const v=s[k]; if(v) parts.push((v>0?'+':'')+Math.round(v)+' '+k); }
+    if(it.set) parts.push('Panoplie : '+it.set);
+    if(it.c) parts.push('Condition : '+(typeof it.c==='string'?it.c:'oui'));
+    return parts.join(' · ').replace(/"/g,'&quot;');
+  }
+  function toggleSrc(){
+    const isW=(document.querySelector('input[name="src2"]:checked')||{}).value!=='sort';
+    if($('arme2')) $('arme2').style.display=isW?'':'none';
+    if($('sort2')) $('sort2').style.display=isW?'none':'';
+    document.querySelectorAll('#srcSeg label').forEach(function(l){ var inp=l.querySelector('input'); l.classList.toggle('on', !!(inp&&inp.checked)); });
+  }
   function statsGrid(r){
-    const S=r.res.S||{}, el=r.atkElement, invest=r.invest||0, cx=r.ctxUsed||{}, chars=['Force','Intelligence','Chance','Agilité'];
-    const pc=k=>(cx.parcho&&+cx.parcho[k])||0; const g=[];
-    for(const c of chars){ const inv=(ELEM_CHAR[el]===c)?invest:0; g.push(`<span class="st"><i>${c}</i><b>${Math.round((S[c]||0)+inv)} <em>(${pc(c)+inv})</em></b></span>`); }
-    const vita=Math.round(S['Vitalité']||0); g.push(`<span class="st"><i>Vitalité</i><b>${vita} <em>(${pc('Vitalité')})</em></b></span>`);
-    const pv=(50+5*((cx.lv||200)-1))+vita; g.push(`<span class="st"><i>Initiative</i><b>${Math.max(0,Math.round(pv/4)+Math.round(S['Initiative']||0))}</b></span>`);
-    const line=(lbl,k,suf='')=>{ const v=Math.round(S[k]||0); return v?`<span class="st"><i>${lbl}</i><b>${suf==='%'&&v>0?'+':''}${v}${suf}</b></span>`:''; };
-    ['Puissance','Dommages','Do Neutre','Do Terre','Do Feu','Do Eau','Do Air','Do Critiques'].forEach(k=>g.push(line(k,k)));
-    ['Coups Critiques','% Do Armes','% Do Sorts','% Do Mêlée','% Do Distance'].forEach(k=>g.push(line(k,k,'%')));
-    ['Tacle','Fuite','Prospection','Soins','Retrait PA','Retrait PM'].forEach(k=>g.push(line(k,k)));
-    g.push(`<span class="st"><i>PA</i><b>${r.res.pa} <em>(${cx.paBase||0})</em></b></span>`);
-    g.push(`<span class="st"><i>PM</i><b>${r.res.pm} <em>(${cx.pmBase||0})</em></b></span>`);
-    g.push(`<span class="st"><i>PO</i><b>${r.res.po}</b></span>`);
-    return `<div class="stats">${g.filter(Boolean).join('')}</div>`;
+    const S=r.res.S||{}, el=r.atkElement, invest=r.invest||0, cx=r.ctxUsed||{};
+    const pc=k=>(cx.parcho&&+cx.parcho[k])||0;
+    const R=v=>Math.round(v||0);
+    const cell=(lbl,val,opt)=>{ opt=opt||{}; const suf=opt.suf||''; const em=(opt.em!=null)?` <em>(${opt.em})</em>`:''; const sign=(opt.sign&&val>0)?'+':''; return `<span class="st"><i>${lbl}</i><b>${sign}${R(val)}${suf}${em}</b></span>`; };
+    // Primaires
+    const vita=R(S['Vitalité']); const pv=(50+5*((cx.lv||200)-1))+vita;
+    const prim=[];
+    prim.push(cell('PA',r.res.pa,{em:cx.paBase||0}));
+    prim.push(cell('PM',r.res.pm,{em:cx.pmBase||0}));
+    prim.push(cell('PO',r.res.po));
+    prim.push(cell('Initiative',Math.max(0,Math.round(pv/4)+R(S['Initiative']))));
+    ['Coups Critiques','Prospection','Soins','Tacle','Fuite','Retrait PA','Retrait PM','Puissance'].forEach(k=>{ if(R(S[k])) prim.push(cell(k,S[k])); });
+    // Caractéristiques
+    const car=[];
+    [['Force','Force'],['Intelligence','Intelligence'],['Chance','Chance'],['Agilité','Agilité']].forEach(pair=>{ const inv=(ELEM_CHAR[el]===pair[1])?invest:0; car.push(cell(pair[0],(S[pair[1]]||0)+inv,{em:pc(pair[1])+inv})); });
+    car.push(cell('Vitalité',vita,{em:pc('Vitalité')}));
+    if(R(S['Sagesse'])) car.push(cell('Sagesse',S['Sagesse'],{em:pc('Sagesse')}));
+    // Dommages (tous affichés, façon DofusBook)
+    const dmg=[];
+    dmg.push(cell('Dommages',S['Dommages']));
+    ['Neutre','Terre','Feu','Eau','Air'].forEach(e=>dmg.push(cell('Do '+e,S['Do '+e])));
+    dmg.push(cell('Do Critiques',S['Do Critiques']));
+    dmg.push(cell('% Do Armes',S['% Do Armes'],{suf:'%',sign:true}));
+    dmg.push(cell('% Do Sorts',S['% Do Sorts'],{suf:'%',sign:true}));
+    dmg.push(cell('% Do Mêlée',S['% Do Mêlée'],{suf:'%',sign:true}));
+    dmg.push(cell('% Do Distance',S['% Do Distance'],{suf:'%',sign:true}));
+    // Résistances (tous affichés)
+    const rez=[];
+    ['Neutre','Terre','Feu','Eau','Air'].forEach(e=>rez.push(cell('% Rés '+e,S['% Rés '+e],{suf:'%',sign:true})));
+    ['Neutre','Terre','Feu','Eau','Air'].forEach(e=>rez.push(cell('Rés '+e,S['Rés '+e])));
+    rez.push(cell('% Rés Mêlée',S['% Rés Mêlée'],{suf:'%',sign:true}));
+    rez.push(cell('% Rés Distance',S['% Rés Distance'],{suf:'%',sign:true}));
+    if(R(S['Rés Critiques'])) rez.push(cell('Rés Critiques',S['Rés Critiques']));
+    const grp=(t,arr)=>`<div class="stitle">${t}</div><div class="stats">${arr.filter(Boolean).join('')}</div>`;
+    return grp('Primaires',prim)+grp('Caractéristiques',car)+grp('Dommages',dmg)+grp('Résistances',rez);
   }
   function setsBlock(r){ const sets=activeSets(r.build, r.ctxUsed&&r.ctxUsed.weapon); if(!sets.length)return'';
     return '<div class="stitle">Bonus de panoplie</div>'+sets.map(s=>`<div class="setrow"><b>${s.name}</b> <span class="small">(${s.count} pièces)</span><div class="setb">${s.bonuses.map(b=>(b.v>0?'+':'')+b.v+' '+b.st).join(' · ')}</div></div>`).join(''); }
   function renderCard(r,title,cls){
     const res=r.res; let head;
-    if(res.perEl){ head=`<div class="dmg"><b>${fmt(res.per)}</b> <span>/ coup (min)</span></div><div class="small">${Object.entries(res.perEl).map(([e,v])=>`${e} ${fmt(v)}`).join(' · ')}</div>`; }
-    else if(r.__attackDmg){ head=`<div class="dmg"><b>${fmt(res.per)}</b> <span>/ coup · ${res.casts} max = ${fmt(res.turn)}/tour</span></div>`; }
-    else head=`<div class="small">Choisis une arme ou un sort ci-dessous pour chiffrer les dégâts de ce build.</div>`;
-    let rows=''; (r.build||[]).forEach((it,i)=>{ const s=r.slots[i]; rows+=`<div class="slotline"><span class="s">${SLOT[s]||s}</span> <span class="v">${it?it.n:'—'}</span></div>`; });
-    return `<div class="res ${cls}"><h3>${title}</h3>${head}${rows}<div class="stitle">Caractéristiques</div>${statsGrid(r)}${setsBlock(r)}
-      <div class="kv"><div>PA : <b>${res.pa}</b>${res.bonusPA?` <span class="small">(dont +${res.bonusPA} Ocre)</span>`:''}</div><div>PM : <b>${res.pm}</b></div><div>Crit : <b>${Math.round(res.effCC)}%</b></div>${res.dfPct?`<div>DF scriptés : <b>+${Math.round(res.dfPct)}%</b></div>`:''}</div></div>`;
+    if(r.__attackDmg){ head=`<div class="dmg"><b>${fmt(res.per)}</b> <span>/ coup · ${res.casts} max = ${fmt(res.turn)}/tour</span></div>`; }
+    else head=`<div class="small">Choisis une arme ou un sort en haut pour chiffrer les dégâts de ce build.</div>`;
+    let rows=''; (r.build||[]).forEach((it,i)=>{ const s=r.slots[i]; const tip=itemTip(it); rows+=`<div class="slotline"${tip?` title="${tip}"`:''}><span class="s">${SLOT[s]||s}</span> <span class="v">${it?it.n:'—'}</span></div>`; });
+    const dfLine = res.dfPct?`<div>Dommages finaux (passifs) : <b>+${Math.round(res.dfPct)}%</b></div>`:'';
+    return `<div class="res ${cls}"><h3>${title}</h3>${head}${rows}${statsGrid(r)}${setsBlock(r)}
+      <div class="kv"><div>PA : <b>${res.pa}</b>${res.bonusPA?` <span class="small">(dont +${res.bonusPA} Ocre)</span>`:''}</div><div>PM : <b>${res.pm}</b></div><div>Crit : <b>${Math.round(res.effCC)}%</b></div>${dfLine}</div></div>`;
   }
+
   function render(){
     const out=$('out'); if(!out)return;
     const cards=[]; if(__res.salle)cards.push(renderCard(__res.salle,'Combat de salle','')); if(__res.vagues)cards.push(renderCard(__res.vagues,'Combat à vagues','wave'));
@@ -1528,7 +1565,8 @@ function solvePhase(cfg, wave){
     if($('classe')) $('classe').addEventListener('change', fillSpells2);
     if($('go')) $('go').addEventListener('click', runAsync);
     ['arme2','sort2'].forEach(id=>{ if($(id)) $(id).addEventListener('change', applyDamage); });
-    document.querySelectorAll('input[name="src2"]').forEach(r=>r.addEventListener('change',applyDamage));
+    document.querySelectorAll('input[name="src2"]').forEach(r=>r.addEventListener('change',function(){ toggleSrc(); applyDamage(); }));
+    toggleSrc();
   }
 })();
 
