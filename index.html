@@ -254,6 +254,11 @@
 
   .footnote{margin-top:16px;text-align:center;color:var(--ink-mute);font-size:11px;}
 </style>
+<style id="glueCss">
+.dofus-row{grid-template-columns:repeat(6,1fr);gap:8px;}
+.dslot{aspect-ratio:auto !important;border-radius:10px;padding:8px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:18px;}
+.dslot .dnm{font-size:9px;line-height:1.15;text-align:center;color:var(--ink-dim);max-height:24px;overflow:hidden;font-weight:600;}
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -1283,7 +1288,8 @@ function solvePhase(cfg, wave){
   }
 
   // ---------- config depuis l'UI ----------
-  function readWeights(){ const w={}; for(const o of OBJECTIVES){ const el=$('w_'+o.key); w[o.key]=(el&&el.checked)?1:0; } return w; }
+  const OBJ_PRIORITY={ deg:1.0, survie:1.0, soin:0.5, tacle:0.25, retPA:0.25, retPM:0.25, prospe:0.2 };
+  function readWeights(){ const w={}; for(const o of OBJECTIVES){ const el=$('w_'+o.key); const on=el&&el.checked; w[o.key]= on ? (OBJ_PRIORITY[o.key]!=null?OBJ_PRIORITY[o.key]:1) : 0; } return w; }
   function cfgFromUI(){
     const parcho={}; document.querySelectorAll('.pch').forEach(c=>{ if(c.checked) parcho[c.dataset.k]=100; });
     const weights=readWeights();
@@ -1306,8 +1312,9 @@ function solvePhase(cfg, wave){
   function itemTipLI(it){ const s=it.s||{}; const li=[]; for(const k in s){ const v=s[k]; if(v) li.push(`<li>${k}<b>${v>0?'+':''}${R(v)}</b></li>`); } if(it.set) li.push(`<li>Panoplie<b>${it.set.name||''}</b></li>`); return li.join(''); }
   function slotHTML(slot,it){ const ic=ICON[slot]||'✦'; const tip=`<div class="tip"><div class="tnm">${it.n}</div><ul>${itemTipLI(it)}</ul></div>`;
     return `<div class="slot"><div class="ico">${ic}</div><div class="meta"><div class="nm">${it.n}</div><div class="ty">${SLOT[slot]||slot}</div></div>${tip}</div>`; }
-  function dslotHTML(it){ const s=it.s||{}; const parts=[]; for(const k in s){ const v=s[k]; if(v){ parts.push((v>0?'+':'')+R(v)+' '+k); if(parts.length>=3)break; } }
-    return `<div class="dslot">✦<div class="tip"><div class="tnm">${it.n}</div><div>${parts.join(' · ')||'—'}</div></div></div>`; }
+  function dslotHTML(it){ const s=it.s||{}; const parts=[]; for(const k in s){ const v=s[k]; if(v){ parts.push((v>0?'+':'')+R(v)+' '+k); if(parts.length>=4)break; } }
+    const ic=/troph/i.test(it.n)?'🏆':'🔮';
+    return `<div class="dslot">${ic}<div class="dnm">${it.n}</div><div class="tip"><div class="tnm">${it.n}</div><div>${parts.join(' · ')||'—'}</div></div></div>`; }
 
   function statsLeftHTML(r){
     const S=r.res.S||{}, cx=r.ctxUsed||{}, el=r.atkElement, invest=r.invest||0;
