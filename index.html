@@ -259,6 +259,22 @@
 .dslot{aspect-ratio:auto !important;border-radius:10px;padding:8px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:18px;}
 .dslot .dnm{font-size:9px;line-height:1.15;text-align:center;color:var(--ink-dim);max-height:24px;overflow:hidden;font-weight:600;}
 </style>
+<style id="respCss">
+@media(max-width:820px){
+  #out{grid-template-columns:1fr !important;gap:12px;}
+  .build-grid{grid-template-columns:1fr !important;}
+  .dofus-row{grid-template-columns:repeat(3,1fr) !important;}
+  .resbar{gap:8px;}
+  .picker{margin-left:0 !important;width:100%;}
+  #search2{flex:1 1 100%;min-width:120px;}
+  #arme2,#sort2{flex:1 1 100%;}
+  .silhouette{aspect-ratio:auto;min-height:90px;}
+}
+@media(max-width:480px){
+  .dofus-row{grid-template-columns:repeat(3,1fr) !important;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+}
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -379,6 +395,11 @@
                   </div>
                 </div>
               </div>
+            </div>
+            <div class="field">
+              <div class="flabel">Ennemis au contact
+                <span class="help" data-tip="Nombre d'ennemis adjacents supposés (mêlée). Utilisé par les passifs qui en dépendent, ex. Dofus Émeraude : bouclier = 4% PV par ennemi au contact.">?</span></div>
+              <input id="enemies" class="in" type="number" min="0" max="12" value="4" style="max-width:130px;">
             </div>
             <div class="field">
               <div class="flabel">Options
@@ -598,10 +619,10 @@ const SCRIPTED_CARAC = [
 ];
 // Effets scriptés DÉFENSIFS récurrents (survivabilité) : dr = réduction de dégâts % ; shieldPctLvl = bouclier (% du niveau) par tour ; turns = nb de tours concernés ; healPctPerTurn = soin (% PV max) par tour — éditables
 const SCRIPTED_SURV = [
-  { id: 7115,  name: 'Ivoire',   dr: 10 },                        // Blanc Ivoire : -50% sur 1 attaque/5 -> ~-10% moyen
+  { id: 7115,  name: 'Ivoire',   dr: 25 },                        // Dofus Ivoire : -50% sur la 1re attaque encaissée chaque tour -> ~-25% moyen (vérifié 3.0)
   { id: 23408, name: 'Dorigami', shieldPctLvl: 100, turns: 5 },   // Tigre de Papier : bouclier 100% niveau/tour, 5 premiers tours
   { id: 17078, name: 'Dokoko',   healPctPerTurn: 3.3 },           // ~10% PV / 3 tours
-  { id: 737,   name: 'Émeraude', shieldPctLvl: 100, turns: 1 },   // Dofus Émeraude : bouclier ponctuel ≈ niveau (éditable)
+  { id: 737,   name: 'Émeraude', shieldPctHPPerEnemy: 4 },        // Dofus Émeraude : bouclier = 4% PV par ennemi au contact / tour (vérifié 3.0)
 ];
 // Bonus de Dommages FIXES scriptés (Dofus Tacheté…) : dom = Dommages plats ajoutés au flat de chaque ligne — éditable
 const SCRIPTED_DOM = [
@@ -812,6 +833,7 @@ function evalBuild(build, ctx){
   for(const ss of SCRIPTED_SURV){ if(build.some(it=>it&&it.id===ss.id)){
     if(ss.dr) S['__dr']=(S['__dr']||0)+ss.dr;
     if(ss.shieldPctLvl) S['__shieldHP']=(S['__shieldHP']||0)+(ss.shieldPctLvl/100)*(ctx.lv||200)*Math.min(ss.turns||H_HITS, H_HITS);
+    if(ss.shieldPctHPPerEnemy){ const _pv=(50+5*((ctx.lv||200)-1))+(S['Vitalité']||0); S['__shieldHP']=(S['__shieldHP']||0)+(ss.shieldPctHPPerEnemy/100)*_pv*(ctx.enemies!=null?ctx.enemies:4)*H_HITS; }
     if(ss.healPctPerTurn) S['__healFrac']=(S['__healFrac']||0)+(ss.healPctPerTurn/100)*H_HITS;
   } }
   // Dommages fixes scriptés (Dofus Tacheté…) : +X Dommages plats -> s'ajoute au flat de chaque ligne (perCast et polyvalent)
@@ -1102,6 +1124,7 @@ function buildCtx(cfg, wave, atkOverride){
     forceCrit:cfg.forceCrit, paBase:6+(cfg.lv>=100?1:0), pmBase:3, // +1 PA au niveau 100
     exoPa:cfg.exoPa,exoPm:cfg.exoPm,exoPo:cfg.exoPo,minPa:cfg.paVise,minPm:cfg.pmVise,minPo:cfg.poVise||0,
     useFam:cfg.useFam, useDofus:cfg.useDofus, wave, leg:cfg.leg||null, deep:cfg.deep,
+    enemies:(cfg.enemies!=null?cfg.enemies:4),
     weights:cfg.weights, objMax:cfg.objMax};
 }
 
@@ -1301,6 +1324,7 @@ function solvePhase(cfg, wave){
       paVise:Math.min(12,+$('paVise').value||0), pmVise:Math.min(6,+$('pmVise').value||0), poVise:Math.min(6,+$('poVise').value||0),
       exoPa:$('exoPa')&&$('exoPa').checked, exoPm:$('exoPm')&&$('exoPm').checked, exoPo:$('exoPo')&&$('exoPo').checked,
       forceCrit:$('forceCrit')&&$('forceCrit').checked,
+      enemies:Math.max(0,+(($('enemies')||{}).value)||4),
       src:'stuff', fm:'', fmPen:20, useFam:true, useDofus:true, deep:true,
       rangeMode, targetElements, weights };
   }
