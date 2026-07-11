@@ -283,6 +283,11 @@
 .tip li.fgline{display:block;color:#5aa9ff;font-weight:600;}
 .ver{position:fixed;bottom:10px;right:12px;z-index:60;font-size:10px;letter-spacing:.04em;color:var(--ink-dim);opacity:.5;padding:2px 8px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.10);border-radius:20px;pointer-events:none;backdrop-filter:blur(4px);}
 .ver:hover{opacity:.9;}
+.combolist{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:50;max-height:280px;overflow:auto;background:#161320;border:1px solid rgba(255,255,255,.14);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.55);display:none;}
+.combolist .cmi{padding:8px 12px;font-size:13px;color:var(--ink,#e8e2d5);cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);}
+.combolist .cmi:last-child{border-bottom:0;}
+.combolist .cmi:hover{background:rgba(201,162,74,.20);}
+.combolist .cmi.none{opacity:.55;cursor:default;}
 .slot[data-fg] .ico, .dslot[data-fg]{box-shadow:0 0 0 1.5px #5aa9ff inset;border-radius:8px;}
 .tip ul{max-height:260px;overflow:auto;}
 </style>
@@ -294,7 +299,7 @@
       <div class="crest">✦</div>
       <h1>Optimiseur de <span>Stuff</span></h1>
       <div class="sub">Dofus 3</div>
-      <div class="ver" id="appVer" title="Version en ligne">2026.07.12-0103</div>
+      <div class="ver" id="appVer" title="Version en ligne">2026.07.12-0118</div>
     </header>
     <script>(function(){var v=document.getElementById('appVer');if(!v)return;var t=v.textContent.trim();v.textContent=(t==='@@'+'BUILD@@')?'dev (local)':('v '+t);})();
     window.addEventListener('load',function(){try{if(typeof DATA!=='undefined'&&DATA.__meta&&DATA.__meta.date){var v=document.getElementById('appVer');if(v)v.textContent+=' · données '+DATA.__meta.date+(DATA.__meta.patch?(' ('+DATA.__meta.patch+')'):'');}}catch(e){}});</script>
@@ -423,9 +428,11 @@
                 <label><input type="radio" name="optMode" value="arme">Arme</label>
                 <label><input type="radio" name="optMode" value="sort">Sort</label>
               </div>
-              <input id="optSearch" class="in" type="text" placeholder="Rechercher…" style="margin-top:8px;display:none;">
-              <select id="optArme" class="in" style="margin-top:8px;display:none;"></select>
-              <select id="optSort" class="in" style="margin-top:8px;display:none;"></select>
+              <div id="optPick" style="margin-top:8px;display:none;position:relative;">
+                <input id="optSearch" class="in" type="text" placeholder="Tape le nom de l'arme (ex. Faux)…" autocomplete="off">
+                <input type="hidden" id="optArme"><input type="hidden" id="optSort">
+                <div id="optList" class="combolist"></div>
+              </div>
               <div id="optFmWrap" style="margin-top:8px;display:none;align-items:center;gap:8px;flex-wrap:wrap;">
                 <span class="small" style="opacity:.7">FM élément (ligne Neutre) :</span>
                 <select id="optFm" class="in" style="max-width:130px;">
@@ -1620,15 +1627,33 @@ function solvePhase(cfg, wave){
   }
 
   // ---------- câblage ----------
-  var __optArmeOpts='', __optSortOpts='';
-  function fillOptAttacks(){ if($('optArme')){ __optArmeOpts='<option value="">— choisir une arme —</option>'+DATA.weapons.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(w=>`<option value="${w.id}">${w.n} (niv ${w.lv})</option>`).join(''); $('optArme').innerHTML=__optArmeOpts; } fillOptSpells(); }
-  function fillOptSpells(){ if(!$('optSort'))return; const c=$('classe')?$('classe').value:''; __optSortOpts='<option value="">— choisir un sort —</option>'+((DATA.spells[c]||[]).map(s=>`<option value="${s.n}">${s.n} (${s.el})</option>`).join('')); $('optSort').innerHTML=__optSortOpts; }
-  function toggleOpt(){ const m=(document.querySelector('input[name="optMode"]:checked')||{}).value||'auto'; if($('optArme'))$('optArme').style.display=(m==='arme')?'':'none'; if($('optSort'))$('optSort').style.display=(m==='sort')?'':'none'; if($('optSearch'))$('optSearch').style.display=(m==='auto')?'none':''; if($('optFmWrap'))$('optFmWrap').style.display=(m==='arme')?'flex':'none'; }
-  function filterOpt(){ const q=(($('optSearch')||{}).value||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); const m=(document.querySelector('input[name="optMode"]:checked')||{}).value; const sel=(m==='arme')?$('optArme'):$('optSort'); if(!sel)return; const full=(m==='arme')?__optArmeOpts:__optSortOpts; if(!q){sel.innerHTML=full;return;} const tmp=document.createElement('select'); tmp.innerHTML=full; const keep=[...tmp.options].filter(o=>!o.value||o.textContent.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').includes(q)); sel.innerHTML=keep.map(o=>`<option value="${o.value}">${o.textContent}</option>`).join(''); }
+  var __optArme=[], __optSort=[];
+  function __onrm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+  function fillOptAttacks(){ __optArme=DATA.weapons.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(w=>({v:String(w.id),t:w.n+' (niv '+w.lv+')',s:w.n})); fillOptSpells(); }
+  function fillOptSpells(){ const c=$('classe')?$('classe').value:''; __optSort=(DATA.spells[c]||[]).map(s=>({v:s.n,t:s.n+' ('+s.el+')',s:s.n})); }
+  function __optMode(){ return (document.querySelector('input[name="optMode"]:checked')||{}).value||'auto'; }
+  function toggleOpt(){ const m=__optMode();
+    if($('optPick'))$('optPick').style.display=(m==='auto')?'none':'';
+    if($('optFmWrap'))$('optFmWrap').style.display=(m==='arme')?'flex':'none';
+    if($('optSearch')){ $('optSearch').value=''; $('optSearch').placeholder=(m==='sort')?'Tape le nom du sort…':"Tape le nom de l'arme (ex. Faux)…"; }
+    if($('optArme'))$('optArme').value=''; if($('optSort'))$('optSort').value=''; __hideOptList(); }
+  function __optData(){ return __optMode()==='sort'?__optSort:__optArme; }
+  function __renderOptList(){ const box=$('optList'); if(!box||__optMode()==='auto')return; const q=__onrm(($('optSearch')||{}).value); const data=__optData();
+    const list=(q?data.filter(o=>__onrm(o.t).includes(q)):data).slice(0,60);
+    box.innerHTML=list.length?list.map(o=>'<div class="cmi" data-v="'+o.v+'" data-s="'+String(o.s).replace(/"/g,'&quot;')+'">'+o.t+'</div>').join(''):'<div class="cmi none">Aucun résultat</div>';
+    box.style.display='block'; }
+  function __hideOptList(){ const b=$('optList'); if(b)b.style.display='none'; }
+  function __pickOpt(v,label){ if(__optMode()==='sort'){ if($('optSort'))$('optSort').value=v; } else { if($('optArme'))$('optArme').value=v; } if($('optSearch'))$('optSearch').value=label; __hideOptList(); }
   function wire(){
     fillClasses(); buildObjChecks(); fillAttacks(); fillOptAttacks();
     document.querySelectorAll('input[name="optMode"]').forEach(function(r){ r.addEventListener('change', toggleOpt); });
-    if($('optSearch')) $('optSearch').addEventListener('input', filterOpt);
+    if($('optSearch')){
+      $('optSearch').addEventListener('input', __renderOptList);
+      $('optSearch').addEventListener('focus', __renderOptList);
+      $('optSearch').addEventListener('blur', function(){ setTimeout(__hideOptList,150); });
+      $('optSearch').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); var f=$('optList')&&$('optList').querySelector('.cmi[data-v]'); if(f)__pickOpt(f.getAttribute('data-v'),f.getAttribute('data-s')); } else if(e.key==='Escape'){ __hideOptList(); } });
+    }
+    if($('optList')) $('optList').addEventListener('mousedown', function(e){ var el=e.target.closest&&e.target.closest('.cmi[data-v]'); if(el){ e.preventDefault(); __pickOpt(el.getAttribute('data-v'), el.getAttribute('data-s')); } });
     if($('classe')) $('classe').addEventListener('change', fillOptSpells);
     toggleOpt();
     if($('classe')) $('classe').addEventListener('change', function(){ fillSpells2(); filterAttacks(); });
