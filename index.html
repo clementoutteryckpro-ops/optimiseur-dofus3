@@ -281,8 +281,8 @@
 .tip li.dl{display:block;color:var(--ink-dim);}
 .tip li.passive{color:var(--gold-bright,#e0b25a);margin-top:3px;font-weight:600;}
 .tip li.fgline{display:block;color:#5aa9ff;font-weight:600;}
-.masthead{position:relative;}
-.masthead .ver{position:absolute;top:8px;right:10px;font-size:11px;letter-spacing:.04em;color:var(--ink-dim);opacity:.6;padding:2px 8px;border:1px solid rgba(255,255,255,.12);border-radius:20px;}
+.ver{position:fixed;bottom:10px;right:12px;z-index:60;font-size:10px;letter-spacing:.04em;color:var(--ink-dim);opacity:.5;padding:2px 8px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.10);border-radius:20px;pointer-events:none;backdrop-filter:blur(4px);}
+.ver:hover{opacity:.9;}
 .slot[data-fg] .ico, .dslot[data-fg]{box-shadow:0 0 0 1.5px #5aa9ff inset;border-radius:8px;}
 .tip ul{max-height:260px;overflow:auto;}
 </style>
@@ -294,7 +294,7 @@
       <div class="crest">✦</div>
       <h1>Optimiseur de <span>Stuff</span></h1>
       <div class="sub">Dofus 3</div>
-      <div class="ver" id="appVer" title="Version en ligne">2026.07.11-1623</div>
+      <div class="ver" id="appVer" title="Version en ligne">2026.07.11-1853</div>
     </header>
     <script>(function(){var v=document.getElementById('appVer');if(!v)return;var t=v.textContent.trim();v.textContent=(t==='@@'+'BUILD@@')?'dev (local)':('v '+t);})();</script>
 
@@ -848,37 +848,42 @@ function totalPA(S,paBase,exoPa){ return paBase+(S['PA']||0)+(exoPa?1:0); }
    ne peut avoir ni over ni exo (les deux options s'excluent par item). Poids issus des tables de forgemagie.
    Heuristique demandée : over crit en priorité sur les items qui ONT déjà du crit (pour franchir 100%),
    items sans crit -> transcendance %Do. Caps par défaut (éditables via FORGE_CFG). */
-const FORGE_DENS=101;
-const FORGE_CFG={ crit:{poids:10,cap:6}, docrit:{poids:5,cap:20}, pui:{poids:2,cap:50}, transPct:3 };
+const FORGE_DENS=101;               // densité over+exo max cumulée par item
+// cap = jet TOTAL max de la stat sur un item (base incluse) = arrondi(101/poids). poids = densité par +1.
+const FORGE_CFG={ crit:{poids:10,cap:5}, docrit:{poids:5,cap:20}, pui:{poids:2,cap:50}, transPct:3 };
+const FORGE_NOPOOL={dt:1, familier:1, monture:1, montilier:1};   // Dofus/trophées, familiers, montures : NON forgeables
+function __forgeTag(){ if(DATA.__forgeTagged)return; DATA.__forgeTagged=true;
+  for(const p in DATA.items){ for(const it of DATA.items[p]) it.__pool=p; }
+  for(const it of (DATA.pets||[])) it.__pool='familier'; }
 function applyForge(build, ctx, S, detail){
+  __forgeTag();
   const isW=ctx.isWeapon, F=FORGE_CFG;
   let ccNow=Math.min(100,(ctx.baseCC||0)+(S['Coups Critiques']||0));
   let need=Math.max(0,100-ccNow);
   const items=[];
   for(let i=0;i<build.length;i++){ const it=build[i]; if(!it||!it.n)continue;
-    items.push({i,it,base:(it.s&&it.s['Coups Critiques'])||0,baseDC:(it.s&&it.s['Do Critiques'])||0,dens:FORGE_DENS,crit:0,trans:false,lines:[]}); }
-  items.sort((a,b)=>b.base-a.base);                       // items à crit de base d'abord
+    if(it.pr || FORGE_NOPOOL[it.__pool]) continue;        // exclut Dofus, trophées, prysmaradites, familiers, montures
+    items.push({i,it,baseCrit:(it.s&&it.s['Coups Critiques'])||0,baseDC:(it.s&&it.s['Do Critiques'])||0,basePui:(it.s&&it.s['Puissance'])||0,dens:FORGE_DENS,crit:0,trans:false,lines:[]}); }
+  items.sort((a,b)=>b.baseCrit-a.baseCrit);               // items à crit de base d'abord
   let addCrit=0,addDoCrit=0,addPui=0,addPctA=0,addPctS=0;
-  // 1) crit -> 100% : over sur items à crit de base d'abord, exo sur les autres si nécessaire
+  const over=(base,add,st)=> base>0 ? `${st} ${base}→${base+add} (over)` : `+${add} ${st} (exo)`;
+  // 1) crit -> 100% : over (base>0) prioritaire, exo sinon ; TOTAL base+add ≤ cap
   for(const o of items){ if(need<=0)break;
-    const cur=Math.min(o.base,F.crit.cap);
-    const room=Math.min(F.crit.cap-cur, need, Math.floor(o.dens/F.crit.poids));
-    if(room>0){ addCrit+=room; o.dens-=room*F.crit.poids; need-=room; o.crit=room;
-      o.lines.push('+'+room+' crit ('+(o.base>0?'over':'exo')+')'); }
+    const room=Math.min(F.crit.cap-Math.min(o.baseCrit,F.crit.cap), need, Math.floor(o.dens/F.crit.poids));
+    if(room>0){ addCrit+=room; o.dens-=room*F.crit.poids; need-=room; o.crit=room; o.lines.push(over(o.baseCrit,room,'crit')); }
   }
-  // 2) remplissage : items sans crit et non utilisés -> transcendance %Do ; sinon over/exo Do Critiques puis Puissance
+  // 2) items sans crit et non utilisés -> transcendance %Do (exclusif : pas d'over/exo) ; sinon over/exo Do Crit puis Puissance
   for(const o of items){
-    if(o.base===0 && !o.crit){
+    if(o.baseCrit===0 && !o.crit){
       o.trans=true;
-      if(isW){ addPctA+=F.transPct; o.lines.push('transc. +'+F.transPct+'% Do armes'); }
-      else   { addPctS+=F.transPct; o.lines.push('transc. +'+F.transPct+'% Do sorts'); }
+      if(isW){ addPctA+=F.transPct; o.lines.push(`transc. +${F.transPct}% Do armes`); }
+      else   { addPctS+=F.transPct; o.lines.push(`transc. +${F.transPct}% Do sorts`); }
     } else {
       let d=o.dens;
-      const room=Math.max(0, F.docrit.cap-Math.min(o.baseDC,F.docrit.cap));
-      const dc=Math.min(room, Math.floor(d/F.docrit.poids));
-      if(dc>0){ addDoCrit+=dc; d-=dc*F.docrit.poids; o.lines.push('+'+dc+' Do Crit ('+(o.baseDC>0?'over':'exo')+')'); }
-      const pu=Math.min(F.pui.cap, Math.floor(d/F.pui.poids));
-      if(pu>0){ addPui+=pu; d-=pu*F.pui.poids; o.lines.push('+'+pu+' Puissance'); }
+      const dcRoom=Math.min(Math.max(0,F.docrit.cap-Math.min(o.baseDC,F.docrit.cap)), Math.floor(d/F.docrit.poids));
+      if(dcRoom>0){ addDoCrit+=dcRoom; d-=dcRoom*F.docrit.poids; o.lines.push(over(o.baseDC,dcRoom,'Do Crit')); }
+      const puRoom=Math.min(Math.max(0,F.pui.cap-Math.min(o.basePui,F.pui.cap)), Math.floor(d/F.pui.poids));
+      if(puRoom>0){ addPui+=puRoom; d-=puRoom*F.pui.poids; o.lines.push(over(o.basePui,puRoom,'Puissance')); }
       o.dens=d;
     }
     if(detail && o.lines.length) detail.push({i:o.i, name:o.it.n, trans:o.trans, lines:o.lines});
