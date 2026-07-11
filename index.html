@@ -1485,8 +1485,10 @@ function solvePhase(cfg, wave){
   }
   function runAsync(){
     if($('err')) $('err').textContent='';
-    const anyObj=[...document.querySelectorAll('.telem:checked')].length || [...document.querySelectorAll('#objChecks input:checked')].length;
-    if(!anyObj){ if($('err')) $('err').textContent='Coche au moins un élément (dégâts) ou un objectif.'; return; }
+    const _opt=(document.querySelector('input[name="optMode"]:checked')||{}).value||'auto';
+    const _armeSel=(_opt==='arme'&&$('optArme')&&$('optArme').value)||(_opt==='sort'&&$('optSort')&&$('optSort').value);
+    const anyObj=[...document.querySelectorAll('.telem:checked')].length || [...document.querySelectorAll('#objChecks input:checked')].length || _armeSel;
+    if(!anyObj){ if($('err')) $('err').textContent='Coche au moins un élément (dégâts), un objectif, ou choisis une arme/sort à optimiser.'; return; }
     if(window.showStep) window.showStep(3);
     setTimeout(run,20);
   }
