@@ -419,6 +419,14 @@
               <input id="optSearch" class="in" type="text" placeholder="Rechercher…" style="margin-top:8px;display:none;">
               <select id="optArme" class="in" style="margin-top:8px;display:none;"></select>
               <select id="optSort" class="in" style="margin-top:8px;display:none;"></select>
+              <div id="optFmWrap" style="margin-top:8px;display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="small" style="opacity:.7">FM élément (ligne Neutre) :</span>
+                <select id="optFm" class="in" style="max-width:130px;">
+                  <option value="">— aucune —</option><option value="Terre">Terre</option><option value="Feu">Feu</option><option value="Eau">Eau</option><option value="Air">Air</option>
+                </select>
+                <span class="small" style="opacity:.7">pénalité</span>
+                <input id="optFmPen" class="in" type="number" min="0" max="90" value="20" style="max-width:80px;"><span class="small" style="opacity:.7">%</span>
+              </div>
             </div>
             <div class="field">
               <div class="flabel">Options
@@ -426,6 +434,7 @@
               </div>
               <div class="chips" style="gap:14px;">
                 <label class="toggle"><input type="checkbox" id="forceCrit"><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Forcer 100 % crit</label>
+                <label class="toggle"><input type="checkbox" id="forgeMax"><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Forge maximale <span class="help" data-tip="Simule un stuff parfaitement forgé : over/exo (crit, Do Critiques, Puissance) dans la limite de 101 densité par item + transcendance %Do sur les items sans crit. Over crit priorisé sur les items qui ont déjà du crit pour franchir 100 % crit.">?</span></label>
                 <label class="toggle checked"><input type="checkbox" id="phSalle" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Combat de salle</label>
                 <label class="toggle checked"><input type="checkbox" id="phVagues" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Combat à vagues</label>
               </div>
@@ -828,10 +837,59 @@ function perCast(lines, atkElement, S, invest, critP){
 
 function totalPA(S,paBase,exoPa){ return paBase+(S['PA']||0)+(exoPa?1:0); }
 
+/* ===== Forge maximale (over / exo naturel + transcendance) =====
+   Règles Dofus 3 : densité (poids×valeur) cumulée ≤ 101 par item pour l'over/exo ; un item transcendé
+   ne peut avoir ni over ni exo (les deux options s'excluent par item). Poids issus des tables de forgemagie.
+   Heuristique demandée : over crit en priorité sur les items qui ONT déjà du crit (pour franchir 100%),
+   items sans crit -> transcendance %Do. Caps par défaut (éditables via FORGE_CFG). */
+const FORGE_DENS=101;
+const FORGE_CFG={ crit:{poids:10,cap:6}, docrit:{poids:5,cap:20}, pui:{poids:2,cap:50}, transPct:3 };
+function applyForge(build, ctx, S, detail){
+  const isW=ctx.isWeapon, F=FORGE_CFG;
+  let ccNow=Math.min(100,(ctx.baseCC||0)+(S['Coups Critiques']||0));
+  let need=Math.max(0,100-ccNow);
+  const items=[];
+  for(let i=0;i<build.length;i++){ const it=build[i]; if(!it||!it.n)continue;
+    items.push({i,it,base:(it.s&&it.s['Coups Critiques'])||0,baseDC:(it.s&&it.s['Do Critiques'])||0,dens:FORGE_DENS,crit:0,trans:false,lines:[]}); }
+  items.sort((a,b)=>b.base-a.base);                       // items à crit de base d'abord
+  let addCrit=0,addDoCrit=0,addPui=0,addPctA=0,addPctS=0;
+  // 1) crit -> 100% : over sur items à crit de base d'abord, exo sur les autres si nécessaire
+  for(const o of items){ if(need<=0)break;
+    const cur=Math.min(o.base,F.crit.cap);
+    const room=Math.min(F.crit.cap-cur, need, Math.floor(o.dens/F.crit.poids));
+    if(room>0){ addCrit+=room; o.dens-=room*F.crit.poids; need-=room; o.crit=room;
+      o.lines.push('+'+room+' crit ('+(o.base>0?'over':'exo')+')'); }
+  }
+  // 2) remplissage : items sans crit et non utilisés -> transcendance %Do ; sinon over/exo Do Critiques puis Puissance
+  for(const o of items){
+    if(o.base===0 && !o.crit){
+      o.trans=true;
+      if(isW){ addPctA+=F.transPct; o.lines.push('transc. +'+F.transPct+'% Do armes'); }
+      else   { addPctS+=F.transPct; o.lines.push('transc. +'+F.transPct+'% Do sorts'); }
+    } else {
+      let d=o.dens;
+      const room=Math.max(0, F.docrit.cap-Math.min(o.baseDC,F.docrit.cap));
+      const dc=Math.min(room, Math.floor(d/F.docrit.poids));
+      if(dc>0){ addDoCrit+=dc; d-=dc*F.docrit.poids; o.lines.push('+'+dc+' Do Crit ('+(o.baseDC>0?'over':'exo')+')'); }
+      const pu=Math.min(F.pui.cap, Math.floor(d/F.pui.poids));
+      if(pu>0){ addPui+=pu; d-=pu*F.pui.poids; o.lines.push('+'+pu+' Puissance'); }
+      o.dens=d;
+    }
+    if(detail && o.lines.length) detail.push({i:o.i, name:o.it.n, trans:o.trans, lines:o.lines});
+  }
+  if(addCrit)  S['Coups Critiques']=(S['Coups Critiques']||0)+addCrit;
+  if(addDoCrit)S['Do Critiques']  =(S['Do Critiques']  ||0)+addDoCrit;
+  if(addPui)   S['Puissance']     =(S['Puissance']     ||0)+addPui;
+  if(addPctA)  S['% Do Armes']    =(S['% Do Armes']    ||0)+addPctA;
+  if(addPctS)  S['% Do Sorts']    =(S['% Do Sorts']    ||0)+addPctS;
+  return S;
+}
+
 // évalue un build complet -> dégâts sur le tour
 function evalBuild(build, ctx){
   const S=aggregate(build, ctx.weapon?{s:ctx.weapon.s, set:ctx.weapon.set}:null);
   if(ctx.parcho){ for(const k in ctx.parcho){ const v=+ctx.parcho[k]||0; if(v) S[k]=(S[k]||0)+v; } } // parchotage par caractéristique (0 ou 100 chacune)
+  if(ctx.forgeMax) applyForge(build, ctx, S);            // forge maximale (over/exo/transcendance) intégrée aux stats
   let __posPct=0;
   if(ctx.isWeapon){ const o=[]; if(ctx.canMelee) o.push(S['% Do Mêlée']||0); if(ctx.canRange) o.push(S['% Do Distance']||0); __posPct=o.length?Math.max(...o):0; }
   S['__pct'] = ctx.isWeapon ? (S['% Do Armes']||0)+__posPct : (S['% Do Sorts']||0);
@@ -1144,7 +1202,7 @@ function buildCtx(cfg, wave, atkOverride){
     forceCrit:cfg.forceCrit, paBase:6+(cfg.lv>=100?1:0), pmBase:3, // +1 PA au niveau 100
     exoPa:cfg.exoPa,exoPm:cfg.exoPm,exoPo:cfg.exoPo,minPa:cfg.paVise,minPm:cfg.pmVise,minPo:cfg.poVise||0,
     useFam:cfg.useFam, useDofus:cfg.useDofus, wave, leg:cfg.leg||null, deep:cfg.deep,
-    enemies:(cfg.enemies!=null?cfg.enemies:4),
+    enemies:(cfg.enemies!=null?cfg.enemies:4), forgeMax:cfg.forgeMax,
     weights:cfg.weights, objMax:cfg.objMax};
 }
 
@@ -1348,12 +1406,14 @@ function solvePhase(cfg, wave){
     const optMode=(document.querySelector('input[name="optMode"]:checked')||{}).value||'auto';
     if(optMode==='arme' && $('optArme') && $('optArme').value){ __src='arme'; __armeId=+$('optArme').value; targetElements=[]; weights.deg=1; }
     else if(optMode==='sort' && $('optSort') && $('optSort').value){ __src='sort'; __sortId=$('optSort').value; targetElements=[]; weights.deg=1; }
+    const __fm=(__src==='arme' && $('optFm'))?($('optFm').value||''):'';
+    const __fmPen=Math.max(0,Math.min(90,+(($('optFmPen')||{}).value)||20));
     return { classe:$('classe').value, lv:+$('niveau').value||1, parcho,
       paVise:Math.min(12,+$('paVise').value||0), pmVise:Math.min(6,+$('pmVise').value||0), poVise:Math.min(6,+$('poVise').value||0),
       exoPa:$('exoPa')&&$('exoPa').checked, exoPm:$('exoPm')&&$('exoPm').checked, exoPo:$('exoPo')&&$('exoPo').checked,
-      forceCrit:$('forceCrit')&&$('forceCrit').checked,
+      forceCrit:$('forceCrit')&&$('forceCrit').checked, forgeMax:$('forgeMax')&&$('forgeMax').checked,
       enemies:Math.max(0,+(($('enemies')||{}).value)||4),
-      src:__src, armeId:__armeId, sortId:__sortId, fm:'', fmPen:20, useFam:true, useDofus:true, deep:true,
+      src:__src, armeId:__armeId, sortId:__sortId, fm:__fm, fmPen:__fmPen, useFam:true, useDofus:true, deep:true,
       rangeMode, targetElements, weights };
   }
 
@@ -1412,8 +1472,12 @@ function solvePhase(cfg, wave){
     const colR=`<div class="build-col">${Rr.map(g=>slotHTML(g[0],g[1])).join('')}</div>`;
     const dof=`<div class="dofus-row">${dts.map(dslotHTML).join('')}</div>`;
     const pano=panopliesHTML(r);
-    return `<div class="build"><div class="build-grid">${colL}${sil}${colR}</div>${dof}${pano}</div>`;
+    return `<div class="build"><div class="build-grid">${colL}${sil}${colR}</div>${dof}${pano}${forgeHTML(r)}</div>`;
   }
+  function forgeDetailFor(r){ const cx=r.ctxUsed||__res.cfg||{}; if(!cx.forgeMax||typeof applyForge!=='function')return null;
+    try{ const S0=aggregate(r.build, cx.weapon?{s:cx.weapon.s,set:cx.weapon.set}:null); const det=[]; applyForge(r.build, cx, S0, det); return det; }catch(e){ return null; } }
+  function forgeHTML(r){ const det=forgeDetailFor(r); if(!det||!det.length)return'';
+    return '<div id="forgeBox"><h4>🔨 Forge maximale (théorique)</h4>'+det.map(d=>`<div class="pano"><span class="pn">${d.name}${d.trans?' <em>(transcendé)</em>':''}</span> <span class="pb">— ${d.lines.join(', ')}</span></div>`).join('')+'</div>'; }
   function panopliesHTML(r){ const sets=activeSets(r.build, r.ctxUsed&&r.ctxUsed.weapon); if(!sets.length)return'<div id="panoplies" style="display:none"></div>';
     return '<div id="panoplies"><h4>Bonus de panoplie</h4>'+sets.map(s=>`<div class="pano"><span class="pn">${s.name} (${s.count})</span> <span class="pb">— ${s.bonuses.map(b=>(b.v>0?'+':'')+b.v+' '+b.st).join(', ')}</span></div>`).join('')+'</div>';
   }
@@ -1531,7 +1595,7 @@ function solvePhase(cfg, wave){
   var __optArmeOpts='', __optSortOpts='';
   function fillOptAttacks(){ if($('optArme')){ __optArmeOpts='<option value="">— choisir une arme —</option>'+DATA.weapons.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(w=>`<option value="${w.id}">${w.n} (niv ${w.lv})</option>`).join(''); $('optArme').innerHTML=__optArmeOpts; } fillOptSpells(); }
   function fillOptSpells(){ if(!$('optSort'))return; const c=$('classe')?$('classe').value:''; __optSortOpts='<option value="">— choisir un sort —</option>'+((DATA.spells[c]||[]).map(s=>`<option value="${s.n}">${s.n} (${s.el})</option>`).join('')); $('optSort').innerHTML=__optSortOpts; }
-  function toggleOpt(){ const m=(document.querySelector('input[name="optMode"]:checked')||{}).value||'auto'; if($('optArme'))$('optArme').style.display=(m==='arme')?'':'none'; if($('optSort'))$('optSort').style.display=(m==='sort')?'':'none'; if($('optSearch'))$('optSearch').style.display=(m==='auto')?'none':''; }
+  function toggleOpt(){ const m=(document.querySelector('input[name="optMode"]:checked')||{}).value||'auto'; if($('optArme'))$('optArme').style.display=(m==='arme')?'':'none'; if($('optSort'))$('optSort').style.display=(m==='sort')?'':'none'; if($('optSearch'))$('optSearch').style.display=(m==='auto')?'none':''; if($('optFmWrap'))$('optFmWrap').style.display=(m==='arme')?'flex':'none'; }
   function filterOpt(){ const q=(($('optSearch')||{}).value||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); const m=(document.querySelector('input[name="optMode"]:checked')||{}).value; const sel=(m==='arme')?$('optArme'):$('optSort'); if(!sel)return; const full=(m==='arme')?__optArmeOpts:__optSortOpts; if(!q){sel.innerHTML=full;return;} const tmp=document.createElement('select'); tmp.innerHTML=full; const keep=[...tmp.options].filter(o=>!o.value||o.textContent.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').includes(q)); sel.innerHTML=keep.map(o=>`<option value="${o.value}">${o.textContent}</option>`).join(''); }
   function wire(){
     fillClasses(); buildObjChecks(); fillAttacks(); fillOptAttacks();
