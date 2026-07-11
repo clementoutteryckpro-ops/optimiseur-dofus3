@@ -280,6 +280,8 @@
 .dslot img{width:26px;height:26px;object-fit:contain;}
 .tip li.dl{display:block;color:var(--ink-dim);}
 .tip li.passive{color:var(--gold-bright,#e0b25a);margin-top:3px;font-weight:600;}
+.tip li.fgline{display:block;color:#5aa9ff;font-weight:600;}
+.slot[data-fg] .ico, .dslot[data-fg]{box-shadow:0 0 0 1.5px #5aa9ff inset;border-radius:8px;}
 .tip ul{max-height:260px;overflow:auto;}
 </style>
 </head>
@@ -1422,21 +1424,26 @@ function solvePhase(cfg, wave){
   function cell(lbl,val,opt){ opt=opt||{}; const suf=opt.suf||''; const sign=(opt.sign&&val>0)?'+':''; const de=opt.el?` data-el style="--el:var(${ELVAR[opt.el]})"`:''; return `<div class="st"${de}><i>${lbl}</i><b>${sign}${R(val)}${suf}</b></div>`; }
   function block(title,cells){ return `<div class="block"><h4>${title}</h4><div class="stats">${cells.filter(Boolean).join('')}</div></div>`; }
   const SCRIPTED_DESC={737:'Bouclier : 4% des PV par ennemi au contact (fin de tour)',7115:'Réduit de 50% les dégâts de la 1re attaque encaissée chaque tour',23408:'Bouclier ≈ niveau par tour (5 premiers tours)',17078:'Soigne ~10% des PV sur 3 tours',7754:'+1 PA début de tour si non touché',739:'+1% Dommages finaux par critique (cumul ~10)',8698:'+20% Dommages finaux un tour sur deux',6980:'+10% Dommages finaux si non attaqué',7112:'+20 Dommages fixes',694:'Montée en puissance (Dommages finaux croissants)'};
-  function tipBody(it){ let li='';
-    if(it.desc&&it.desc.length){ li=it.desc.map(function(l){return '<li class="dl">'+l+'</li>';}).join(''); }
-    else { const s=it.s||{}; for(const k in s){ const v=s[k]; if(v) li+=`<li>${k}<b>${v>0?'+':''}${R(v)}</b></li>`; } }
+  function tipBody(it,fg){ let li=''; const s=it.s||{};
+    // stats fiables issues de it.s (les descriptifs récupérés en ligne étaient parfois corrompus)
+    for(const k in s){ const v=s[k]; if(!v)continue; const suf=/^%/.test(k)?'%':''; li+=`<li>${k}<b>${v>0?'+':''}${R(v)}${suf}</b></li>`; }
     if(SCRIPTED_DESC[it.id]) li+='<li class="dl passive">✦ '+SCRIPTED_DESC[it.id]+'</li>';
+    if(fg&&fg.length){ for(const l of fg) li+='<li class="fgline">🔨 '+l+'</li>'; }   // forgemagie appliquée (en bleu)
+    if(!li) li='<li class="dl">—</li>';
     return '<ul>'+li+'</ul>'; }
-  function slotHTML(slot,it){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:(ICON[slot]||'✦');
-    return `<div class="slot"><div class="ico">${ic}</div><div class="meta"><div class="nm">${it.n}</div><div class="ty">${SLOT[slot]||slot}</div></div><div class="tip"><div class="tnm">${it.n}</div>${tipBody(it)}</div></div>`; }
-  function dslotHTML(it){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:(/troph/i.test(it.n)?'🏆':'🔮');
-    return `<div class="dslot">${ic}<div class="dnm">${it.n}</div><div class="tip"><div class="tnm">${it.n}</div>${tipBody(it)}</div></div>`; }
+  function slotHTML(slot,it,fg){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:(ICON[slot]||'✦');
+    const fgd=(fg&&fg.length)?' data-fg':'';
+    return `<div class="slot"${fgd}><div class="ico">${ic}</div><div class="meta"><div class="nm">${it.n}</div><div class="ty">${SLOT[slot]||slot}</div></div><div class="tip"><div class="tnm">${it.n}</div>${tipBody(it,fg)}</div></div>`; }
+  function dslotHTML(it,fg){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:(/troph/i.test(it.n)?'🏆':'🔮');
+    const fgd=(fg&&fg.length)?' data-fg':'';
+    return `<div class="dslot"${fgd}>${ic}<div class="dnm">${it.n}</div><div class="tip"><div class="tnm">${it.n}</div>${tipBody(it,fg)}</div></div>`; }
 
   function statsLeftHTML(r){
     const S=r.res.S||{}, cx=r.ctxUsed||{}, el=r.atkElement, invest=r.invest||0;
     const vita=R(S['Vitalité']); const pv=(50+5*((cx.lv||200)-1))+vita;
     const prim=[];
     prim.push(cell('PA',r.res.pa)); prim.push(cell('PM',r.res.pm)); prim.push(cell('Portée',r.res.po));
+    prim.push(cell('Critique',Math.round(r.res.effCC||0),{suf:'%'}));
     prim.push(cell('Initiative',Math.max(0,Math.round(pv/4)+R(S['Initiative']))));
     ['Prospection','Soins','Tacle','Fuite','Retrait PA','Retrait PM','Puissance','Pods'].forEach(k=>{ if(R(S[k])) prim.push(cell(k,S[k])); });
     const car=[];
@@ -1462,15 +1469,26 @@ function solvePhase(cfg, wave){
     if(R(S['Rés Critiques'])) rez.push(cell('Rés Critiques',S['Rés Critiques']));
     return block('Dommages',dmg)+block('Résistances',rez);
   }
+  function weaponSlotHTML(w,cx){
+    if(!w) return '';
+    const ic=w.img?`<img src="${w.img}" alt="" loading="lazy">`:'⚔️';
+    const ls=(cx&&cx.lines)||[];
+    let dl=ls.map(l=>`<li class="dl">${l.mn}-${l.mx} ${l.el}${(l.cmn||l.cmx)?` · crit ${l.cmn||l.mn}-${l.cmx||l.mx}`:''}</li>`).join('');
+    const st=w.s||{}; let sl=''; for(const k in st){ const v=st[k]; if(!v)continue; const suf=/^%/.test(k)?'%':''; sl+=`<li>${k}<b>${v>0?'+':''}${R(v)}${suf}</b></li>`; }
+    const pa=(w.w&&w.w.pa)?` · ${w.w.pa} PA`:'';
+    return `<div class="slot wslot"><div class="ico">${ic}</div><div class="meta"><div class="nm">${w.n}</div><div class="ty">Arme${pa}</div></div><div class="tip"><div class="tnm">${w.n}</div><ul>${dl}${sl}</ul></div></div>`;
+  }
+  function forgeMapFor(r){ const det=forgeDetailFor(r); const m={}; if(det) for(const d of det) m[d.i]=d.lines; return m; }
   function buildCenterHTML(r,cx){
+    const fmap=forgeMapFor(r);
     const gear=[], dts=[];
-    (r.build||[]).forEach((it,i)=>{ if(!it)return; const s=r.slots[i]; if(s==='dt') dts.push(it); else gear.push([s,it]); });
+    (r.build||[]).forEach((it,i)=>{ if(!it)return; const s=r.slots[i]; if(s==='dt') dts.push([it,i]); else gear.push([s,it,i]); });
     const half=Math.ceil(gear.length/2), L=gear.slice(0,half), Rr=gear.slice(half);
     const elem=(r.atkElement)||(cx.targetElements&&cx.targetElements.join('/'))||'';
-    const sil=`<div class="build-col"><div class="silhouette"><div><div class="cls">${cx.classe||''}${elem?' — '+elem:''}</div><div>Niveau ${cx.lv||200}</div></div></div></div>`;
-    const colL=`<div class="build-col">${L.map(g=>slotHTML(g[0],g[1])).join('')}</div>`;
-    const colR=`<div class="build-col">${Rr.map(g=>slotHTML(g[0],g[1])).join('')}</div>`;
-    const dof=`<div class="dofus-row">${dts.map(dslotHTML).join('')}</div>`;
+    const sil=`<div class="build-col"><div class="silhouette"><div><div class="cls">${cx.classe||''}${elem?' — '+elem:''}</div><div>Niveau ${cx.lv||200}</div></div></div>${weaponSlotHTML(cx.weapon,cx)}</div>`;
+    const colL=`<div class="build-col">${L.map(g=>slotHTML(g[0],g[1],fmap[g[2]])).join('')}</div>`;
+    const colR=`<div class="build-col">${Rr.map(g=>slotHTML(g[0],g[1],fmap[g[2]])).join('')}</div>`;
+    const dof=`<div class="dofus-row">${dts.map(d=>dslotHTML(d[0],fmap[d[1]])).join('')}</div>`;
     const pano=panopliesHTML(r);
     return `<div class="build"><div class="build-grid">${colL}${sil}${colR}</div>${dof}${pano}${forgeHTML(r)}</div>`;
   }
