@@ -1050,8 +1050,8 @@ function optimize(ctx){
   }
   const score=b=>evalBuild(b,ctx).score;
   // budget de recherche (mode rapide par défaut ; mode approfondi via ctx.deep). Paramétrable pour le harness.
-  const RST =(typeof __RESTARTS!=='undefined')?__RESTARTS:(ctx.deep?24:10);
-  const ITER=(typeof __ILS!=='undefined')?__ILS:(ctx.deep?360:130);
+  const RST =(ctx.budget&&ctx.budget.rst!=null)?ctx.budget.rst:((typeof __RESTARTS!=='undefined')?__RESTARTS:(ctx.deep?24:10));
+  const ITER=(ctx.budget&&ctx.budget.iter!=null)?ctx.budget.iter:((typeof __ILS!=='undefined')?__ILS:(ctx.deep?360:130));
   _seedRng(0x9E3779B1);                              // graine fixe -> résultat déterministe (même build à chaque clic)
   let bestB=climb(greedy(false)), bestScore=score(bestB);
   for(let r=0;r<RST;r++){ const b=climb(greedy(true)); const s=score(b); if(s>bestScore){bestScore=s;bestB=b;} }
@@ -1160,6 +1160,10 @@ function solve(cfg, wave){
   if(cfg.targetElements && cfg.targetElements.length){   // mode polyvalent : la métrique (min par élément) gère déjà tous les éléments
     const ctx=buildCtx(cfg,wave); const r=optWithCrit(ctx);
     r.atkElement=ctx.atkElement; r.invest=ctx.invest; r.isWeapon=ctx.isWeapon; r.baseCC=ctx.baseCC; return r;
+  }
+  if(cfg.forceEl){                                       // parallélisation : ne calcule QUE cet élément d'investissement (le main-thread lance un worker par élément puis garde le meilleur)
+    const c=buildCtx(cfg,wave,cfg.forceEl); const r=optWithCrit(c);
+    r.atkElement=cfg.forceEl; r.invest=c.invest; r.isWeapon=c.isWeapon; r.baseCC=c.baseCC; return r;
   }
   // éléments distincts de l'attaque (arme sans FM, ou sort multi-éléments) -> tester chacun comme élément d'investissement
   let els=null;
@@ -1445,18 +1449,25 @@ function solvePhase(cfg, wave){
   }
 
   // ---------- lancement (worker anti-gel + barre) ----------
-  let __optiWorker=null;
-  function __buildWorker(){
-    if(__optiWorker) return Promise.resolve(__optiWorker);
+  var __workerSrc=null;
+  function __workerSource(){
+    if(__workerSrc) return Promise.resolve(__workerSrc);
     return fetch(location.href,{cache:'no-store'}).then(function(r){return r.text();}).then(function(html){
       var scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(function(m){return m[1];});
       var dataS=scripts.find(function(s){return s.indexOf('const DATA =')>=0;});
       var engS=scripts.find(function(s){return s.indexOf('function solvePhase')>=0;});
       if(!dataS||!engS) throw new Error('scripts introuvables');
       var glue="let PROGRESS=null;self.onmessage=function(ev){var cfg=ev.data.cfg,ph=ev.data.phases,res={};for(var i=0;i<ph.length;i++){PROGRESS=function(){self.postMessage({t:'tick'});};try{res[ph[i][0]]=solvePhase(cfg,ph[i][1]);}catch(e){self.postMessage({t:'err',m:String(e&&e.message||e)});return;}}var o;try{o=JSON.stringify(res);}catch(e){self.postMessage({t:'err',m:'clone'});return;}self.postMessage({t:'done',res:o});};";
-      __optiWorker=new Worker(URL.createObjectURL(new Blob([dataS+'\n'+engS+'\n'+glue],{type:'application/javascript'})));
-      return __optiWorker;
+      __workerSrc=dataS+'\n'+engS+'\n'+glue; return __workerSrc;
     });
+  }
+  function __spawnWorker(src){ return new Worker(URL.createObjectURL(new Blob([src],{type:'application/javascript'}))); }
+  // éléments d'investissement à tester en parallèle (arme multi-élément sans FM, ou sort multi/meilleur-élément). null si un seul élément.
+  function __splitEls(cfg){
+    if(cfg.targetElements && cfg.targetElements.length) return null;
+    if(cfg.src==='arme'){ if(cfg.fm) return null; var w=DATA.weapons.find(function(x){return x.id===cfg.armeId;}); if(!w) return null; var els=[...new Set(weaponLines(w,'',0).map(function(l){return l.el;}))]; return els.length>1?els:null; }
+    if(cfg.src==='sort'){ var sp=(DATA.spells[cfg.classe]||[]).find(function(x){return x.n===cfg.sortId;}); if(!sp) return null; if(sp.el==='MEILLEUR'||sp.el==='PIRE') return ['Terre','Feu','Eau','Air']; if(sp.lines&&sp.lines.length>1){ var e=[...new Set(sp.lines.map(function(l){return l.el;}))]; return e.length>1?e:null; } return null; }
+    return null;
   }
   function run(){
     const cfg=cfgFromUI(); __res={cfg};
@@ -1474,11 +1485,34 @@ function solvePhase(cfg, wave){
       syncVarSeg(); renderCurrent(); applyDamage(); }
     function runSync(){ for(var i=0;i<steps.length;i++) __res[steps[i][0]]=solvePhase(cfg,steps[i][1]); finish(); }
     if(typeof Worker==='undefined' || location.protocol==='file:'){ runSync(); return; }
-    __buildWorker().then(function(w){
+    var els=__splitEls(cfg);
+    if(els && els.length>1){
+      // PARALLÈLE : un worker par élément d'investissement, calcul strictement identique, temps mural ≈ 1 élément
+      __workerSource().then(function(src){
+        var jobs=els.map(function(el){ return new Promise(function(resolve,reject){
+          var wk=__spawnWorker(src); var to=setTimeout(function(){reject(new Error('timeout'));},180000);
+          wk.onmessage=function(e){var d=e.data; if(d.t==='tick'){onTick();} else if(d.t==='err'){clearTimeout(to);wk.terminate();reject(new Error(d.m));} else if(d.t==='done'){clearTimeout(to);wk.terminate();resolve(JSON.parse(d.res));}};
+          wk.onerror=function(){clearTimeout(to);wk.terminate();reject(new Error('worker'));};
+          var c2={}; for(var k in cfg) c2[k]=cfg[k]; c2.forceEl=el;
+          wk.postMessage({cfg:c2,phases:steps});
+        });});
+        return Promise.all(jobs);
+      }).then(function(all){
+        // par phase : garde l'élément au meilleur score
+        for(var s=0;s<steps.length;s++){ var ph=steps[s][0]; var best=null;
+          for(var i=0;i<all.length;i++){ var r=all[i][ph]; if(!r)continue; var sc=(r.res&&r.res.score)||0; if(!best||sc>best.__sc){ best=r; best.__sc=sc; } }
+          __res[ph]=best;
+        }
+        finish();
+      }).catch(function(){ runSync(); });
+      return;
+    }
+    __workerSource().then(function(src){
+      var w=__spawnWorker(src);
       return new Promise(function(resolve,reject){
         var to=setTimeout(function(){reject(new Error('timeout'));},180000);
-        w.onmessage=function(e){var d=e.data; if(d.t==='tick'){onTick();} else if(d.t==='err'){clearTimeout(to);reject(new Error(d.m));} else if(d.t==='done'){clearTimeout(to);resolve(JSON.parse(d.res));}};
-        w.onerror=function(){clearTimeout(to);reject(new Error('worker'));};
+        w.onmessage=function(e){var d=e.data; if(d.t==='tick'){onTick();} else if(d.t==='err'){clearTimeout(to);w.terminate();reject(new Error(d.m));} else if(d.t==='done'){clearTimeout(to);w.terminate();resolve(JSON.parse(d.res));}};
+        w.onerror=function(){clearTimeout(to);w.terminate();reject(new Error('worker'));};
         w.postMessage({cfg:cfg,phases:steps});
       });
     }).then(function(out){ for(var k in out) __res[k]=out[k]; finish(); }).catch(function(){ runSync(); });
