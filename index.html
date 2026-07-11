@@ -281,6 +281,8 @@
 .tip li.dl{display:block;color:var(--ink-dim);}
 .tip li.passive{color:var(--gold-bright,#e0b25a);margin-top:3px;font-weight:600;}
 .tip li.fgline{display:block;color:#5aa9ff;font-weight:600;}
+.masthead{position:relative;}
+.masthead .ver{position:absolute;top:8px;right:10px;font-size:11px;letter-spacing:.04em;color:var(--ink-dim);opacity:.6;padding:2px 8px;border:1px solid rgba(255,255,255,.12);border-radius:20px;}
 .slot[data-fg] .ico, .dslot[data-fg]{box-shadow:0 0 0 1.5px #5aa9ff inset;border-radius:8px;}
 .tip ul{max-height:260px;overflow:auto;}
 </style>
@@ -292,7 +294,9 @@
       <div class="crest">✦</div>
       <h1>Optimiseur de <span>Stuff</span></h1>
       <div class="sub">Dofus 3</div>
+      <div class="ver" id="appVer" title="Version en ligne">2026.07.11-1623</div>
     </header>
+    <script>(function(){var v=document.getElementById('appVer');if(!v)return;var t=v.textContent.trim();v.textContent=(t==='@@'+'BUILD@@')?'dev (local)':('v '+t);})();</script>
 
     <nav class="progress" id="progress">
       <div class="pstep active" data-goto="1"><span class="num">1</span><span class="plabel">Personnage</span><span class="plabel-sm">Étape 1</span></div>
