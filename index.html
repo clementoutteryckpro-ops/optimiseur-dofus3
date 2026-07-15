@@ -498,7 +498,7 @@
       </div>
     </div>
 
-    <div id="appVer">2026.07.15-1537</div>
+    <div id="appVer">2026.07.15-1557</div>
   </div>
 </div>
 <script>(function(){var v=document.getElementById('appVer');if(!v)return;var t=v.textContent.trim();v.textContent=(t==='@@'+'BUILD@@')?'Optimiseur Dofus 3 · dev (local)':('Optimiseur Dofus 3 · v '+t);})();
@@ -1341,7 +1341,8 @@ function solvePhase(cfg, wave){
   function tipBody(it,fg){ let li=''; const s=it.s||{};
     // stats fiables issues de it.s (les descriptifs récupérés en ligne étaient parfois corrompus)
     for(const k in s){ const v=s[k]; if(!v)continue; const suf=/^%/.test(k)?'%':''; li+=`<li>${k}<b>${v>0?'+':''}${R(v)}${suf}</b></li>`; }
-    if(SCRIPTED_DESC[it.id]) li+='<li class="dl passive">✦ '+SCRIPTED_DESC[it.id]+'</li>';
+    if(it.p && it.p.length){ for(const p of it.p) li+='<li class="passive">✦ '+p+'</li>'; }   // passifs légendaires (effets spéciaux)
+    else if(SCRIPTED_DESC[it.id]) li+='<li class="dl passive">✦ '+SCRIPTED_DESC[it.id]+'</li>';
     if(fg&&fg.length){ for(const l of fg) li+='<li class="fgline">🔨 '+l+'</li>'; }   // forgemagie appliquée (en bleu)
     if(!li) li='<li class="dl">—</li>';
     return '<ul>'+li+'</ul>'; }
