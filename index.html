@@ -6,620 +6,503 @@
 <title>Optimiseur de Stuff — Dofus 3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0b0a0e;
-    --bg2:#121019;
-    --panel:#16141e;
-    --panel2:#1c1926;
-    --panel3:#221e2c;
-    --line:rgba(224,178,90,.15);
-    --line-soft:rgba(255,255,255,.07);
-    --ink:#f4efe6;
-    --ink-dim:#a89f92;
-    --ink-mute:#6f685e;
-    --gold:#e0b25a;
-    --gold-bright:#f6cf7d;
-    --gold-deep:#b7842f;
-    --amber-glow:rgba(224,178,90,.16);
-    --danger:#e26d6d;
-    --el-neutre:#c9b9c6;
-    --el-terre:#e08a3c;
-    --el-feu:#e2564f;
-    --el-eau:#5aa6e0;
-    --el-air:#83c76a;
-    --radius:14px;
-    --radius-sm:10px;
-    --shadow:0 20px 50px -22px rgba(0,0,0,.8);
-    --font-display:'Cinzel',serif;
-    --font-ui:'Manrope',system-ui,sans-serif;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;}
-  body{
-    font-family:var(--font-ui);color:var(--ink);
-    background:
-      radial-gradient(900px 500px at 50% -10%, rgba(224,178,90,.09), transparent 60%),
-      radial-gradient(800px 600px at 100% 100%, rgba(90,120,224,.05), transparent 55%),
-      var(--bg);
-    min-height:100vh;-webkit-font-smoothing:antialiased;line-height:1.45;font-size:14px;
-  }
-  a{color:var(--gold-bright);text-decoration:none;}
-  a:hover{color:var(--gold);}
-
-  .wrap{max-width:1400px;margin:0 auto;padding:16px 20px 26px;}
-
-  /* ---------- En-tête compact ---------- */
-  .masthead{display:flex;align-items:center;gap:11px;margin-bottom:14px;}
-  .crest{
-    width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;
-    background:linear-gradient(160deg,#2a2333,#141019);border:1px solid var(--line);
-    color:var(--gold-bright);font-family:var(--font-display);font-weight:700;font-size:17px;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
-  }
-  .masthead h1{font-family:var(--font-display);font-weight:600;font-size:19px;letter-spacing:.02em;margin:0;line-height:1;}
-  .masthead h1 span{color:var(--gold);}
-  .masthead .sub{margin-left:auto;color:var(--ink-mute);font-size:11.5px;letter-spacing:.04em;}
-
-  /* ---------- Stepper ---------- */
-  .progress{
-    display:flex;gap:5px;margin-bottom:16px;max-width:560px;
-    background:linear-gradient(180deg,var(--panel),var(--bg2));
-    border:1px solid var(--line-soft);border-radius:999px;padding:5px;
-  }
-  .pstep{
-    flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
-    padding:8px 6px;border-radius:999px;cursor:pointer;color:var(--ink-mute);
-    font-weight:700;font-size:12.5px;transition:.2s;user-select:none;white-space:nowrap;
-  }
-  .pstep .num{
-    width:21px;height:21px;flex:none;display:grid;place-items:center;border-radius:50%;
-    background:rgba(255,255,255,.05);border:1px solid var(--line-soft);font-size:11.5px;transition:.2s;
-  }
-  .pstep:hover{color:var(--ink-dim);}
-  .pstep.active{color:#1a140a;background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));
-    box-shadow:0 6px 16px -8px rgba(224,178,90,.6), inset 0 1px 0 rgba(255,255,255,.4);}
-  .pstep.active .num{background:rgba(26,20,10,.22);border-color:rgba(26,20,10,.25);color:#1a140a;}
-  .pstep.done{color:var(--gold);}
-  .pstep.done .num{border-color:var(--line);color:var(--gold);}
-  .plabel-sm{display:none;}
-  @media(max-width:560px){.plabel{display:none;}.plabel-sm{display:inline;}.pstep{gap:0;}}
-
-  /* ---------- Carte ---------- */
-  .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line-soft);
-    border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
-  .card-top{height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.7;}
-  .card-body{padding:22px 26px;}
-
-  .step{display:none;animation:fade .3s ease;}
-  .step.show{display:block;}
-  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
-
-  .step-head{margin-bottom:18px;}
-  .step-eyebrow{font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:4px;}
-  .step-head h2{font-family:var(--font-display);font-weight:600;font-size:21px;margin:0;letter-spacing:.01em;}
-  .step-head p{margin:4px 0 0;color:var(--ink-dim);font-size:13px;max-width:64ch;}
-
-  /* ---------- Champs ---------- */
-  .field{margin-bottom:18px;}
-  .field:last-child{margin-bottom:0;}
-  .flabel{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;margin-bottom:9px;color:var(--ink);}
-  .flabel .accent{color:var(--gold);}
-  .sub{font-size:11px;color:var(--ink-mute);font-weight:600;margin:0 0 6px;letter-spacing:.02em;}
-
-  .help{position:relative;width:16px;height:16px;flex:none;display:inline-grid;place-items:center;border-radius:50%;
-    background:rgba(224,178,90,.12);border:1px solid var(--line);color:var(--gold);font-size:10px;font-weight:800;cursor:help;line-height:1;}
-  .help::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 9px);transform:translateX(-50%) translateY(4px);
-    width:max-content;max-width:240px;background:#26212f;color:var(--ink);border:1px solid var(--line);padding:8px 11px;border-radius:9px;
-    font-size:11.5px;font-weight:500;line-height:1.45;text-transform:none;box-shadow:0 14px 30px -10px rgba(0,0,0,.8);
-    opacity:0;pointer-events:none;transition:.18s;z-index:30;}
-  .help::before{content:'';position:absolute;left:50%;bottom:calc(100% + 3px);transform:translateX(-50%) translateY(4px);
-    border:6px solid transparent;border-top-color:#26212f;opacity:0;transition:.18s;z-index:31;}
-  .help:hover::after,.help:hover::before{opacity:1;transform:translateX(-50%) translateY(0);}
-
-  .in,select.in{width:100%;background:var(--panel2);border:1px solid var(--line-soft);color:var(--ink);
-    font-family:var(--font-ui);font-size:14px;font-weight:600;padding:10px 12px;border-radius:var(--radius-sm);
-    outline:none;transition:.18s;appearance:none;}
-  .in::placeholder{color:var(--ink-mute);font-weight:500;}
-  .in:focus,select.in:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--amber-glow);background:#221e2b;}
-  select.in{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23e0b25a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer;}
-  input[type=number].in{-moz-appearance:textfield;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-  @media(max-width:600px){.grid2,.grid3{grid-template-columns:1fr;}}
-
-  /* ---------- Cases / puces ---------- */
-  .chips{display:flex;flex-wrap:wrap;gap:9px;}
-  .chip{position:relative;display:inline-flex;align-items:center;gap:8px;padding:9px 13px;background:var(--panel2);
-    border:1px solid var(--line-soft);border-radius:var(--radius-sm);font-size:13px;font-weight:700;color:var(--ink-dim);
-    cursor:pointer;transition:.16s;user-select:none;}
-  .chip:hover{border-color:var(--line);color:var(--ink);}
-  .chip input{position:absolute;opacity:0;pointer-events:none;}
-  .chip .box{width:17px;height:17px;flex:none;border-radius:5px;border:1.5px solid var(--ink-mute);display:grid;place-items:center;transition:.16s;background:rgba(0,0,0,.2);}
-  .chip .box svg{width:11px;height:11px;stroke:#1a140a;stroke-width:3.4;fill:none;opacity:0;transition:.14s;}
-  .chip .dot{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 0 3px rgba(0,0,0,.25) inset;}
-  .chip.checked{color:var(--ink);border-color:var(--gold);background:linear-gradient(180deg,rgba(224,178,90,.14),rgba(224,178,90,.05));
-    box-shadow:0 0 0 1px var(--gold) inset;}
-  .chip.checked .box{background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));border-color:var(--gold);}
-  .chip.checked .box svg{opacity:1;}
-  .chip[data-el] .dot{background:var(--el);}
-  .chip.checked[data-el]{border-color:var(--el);box-shadow:0 0 0 1px var(--el) inset;}
-  .chip.checked[data-el] .box{background:var(--el);border-color:var(--el);}
-  .chip.checked[data-el] .box svg{stroke:#12100c;}
-
-  .seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:3px;gap:3px;flex-wrap:wrap;}
-  .seg label{position:relative;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;color:var(--ink-dim);cursor:pointer;transition:.16s;}
-  .seg label input{position:absolute;opacity:0;pointer-events:none;}
-  .seg label:hover{color:var(--ink);}
-  .seg label.on{color:#1a140a;background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));box-shadow:inset 0 1px 0 rgba(255,255,255,.35);}
-
-  .toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-dim);user-select:none;}
-  .toggle input{position:absolute;opacity:0;pointer-events:none;}
-  .toggle .box{width:17px;height:17px;flex:none;border-radius:5px;border:1.5px solid var(--ink-mute);display:grid;place-items:center;background:rgba(0,0,0,.2);transition:.16s;}
-  .toggle .box svg{width:11px;height:11px;stroke:#1a140a;stroke-width:3.4;fill:none;opacity:0;transition:.14s;}
-  .toggle.checked{color:var(--ink);}
-  .toggle.checked .box{background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));border-color:var(--gold);}
-  .toggle.checked .box svg{opacity:1;}
-  .stat-row{display:flex;align-items:center;gap:9px;}
-  .stat-row .in{max-width:96px;}
-
-  #err{display:none;margin-top:16px;background:rgba(226,109,109,.1);border:1px solid rgba(226,109,109,.4);
-    color:#f0a5a5;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:600;}
-  #err.show{display:block;}
-
-  .actions{display:flex;justify-content:space-between;gap:12px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line-soft);flex-wrap:wrap;}
-  .btn{font-family:var(--font-ui);font-weight:800;font-size:14px;padding:11px 22px;border-radius:11px;cursor:pointer;
-    border:1px solid transparent;transition:.18s;display:inline-flex;align-items:center;gap:8px;}
-  .btn-primary{background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));color:#1a140a;
-    box-shadow:0 10px 24px -12px rgba(224,178,90,.7), inset 0 1px 0 rgba(255,255,255,.4);}
-  .btn-primary:hover{transform:translateY(-1px);}
-  .btn-ghost{background:var(--panel2);color:var(--ink-dim);border-color:var(--line-soft);}
-  .btn-ghost:hover{color:var(--ink);border-color:var(--line);}
-  .btn:active{transform:translateY(0);}
-
-  /* ================= ÉTAPE 3 — RÉSULTAT façon DofusBook ================= */
-  /* Barre compacte du haut */
-  .resbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-    background:var(--panel2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:14px;}
-  .resbar .seg{background:var(--panel3);}
-  #dmgHead{display:flex;align-items:baseline;gap:8px;font-size:12.5px;color:var(--ink-dim);}
-  #dmgHead b{font-family:var(--font-display);font-size:20px;color:var(--gold-bright);font-weight:700;}
-  .resbar .picker{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;}
-  .resbar .picker .in{padding:7px 10px;font-size:12.5px;}
-  #search2{min-width:180px;}
-  #arme2,#sort2{min-width:150px;}
-
-  /* Grille 3 colonnes */
-  #out{display:grid;grid-template-columns:250px 1fr 250px;gap:14px;align-items:start;}
-  @media(max-width:1080px){#out{grid-template-columns:1fr;}}
-
-  .col{display:flex;flex-direction:column;gap:12px;}
-  .block{background:var(--panel2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);padding:12px;}
-  .block h4{margin:0 0 9px;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
-    display:flex;align-items:center;gap:7px;}
-  .block h4::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--gold);flex:none;}
-
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-  .st{background:rgba(0,0,0,.25);border:1px solid var(--line-soft);border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;gap:1px;}
-  .st i{font-style:normal;font-size:9.5px;color:var(--ink-mute);font-weight:600;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .st b{font-size:14px;font-weight:800;color:var(--ink);}
-  .st[data-el] b{color:var(--el);}
-
-  /* Colonne centrale — build */
-  .build{background:linear-gradient(180deg,var(--panel3),var(--panel2));border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px;}
-  .build-grid{display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:12px;align-items:center;}
-  .build-col{display:flex;flex-direction:column;gap:9px;}
-  .silhouette{
-    aspect-ratio:3/4;border-radius:12px;border:1px dashed var(--line);
-    background:radial-gradient(120px 160px at 50% 40%, rgba(224,178,90,.12), transparent 70%), rgba(0,0,0,.25);
-    display:grid;place-items:center;text-align:center;color:var(--ink-mute);font-size:11px;padding:12px;
-  }
-  .silhouette .cls{font-family:var(--font-display);color:var(--gold);font-size:15px;margin-bottom:2px;}
-  .slot{position:relative;display:flex;align-items:center;gap:9px;background:rgba(0,0,0,.25);border:1px solid var(--line-soft);
-    border-radius:9px;padding:7px 9px;cursor:default;transition:.15s;}
-  .slot:hover{border-color:var(--gold);background:rgba(224,178,90,.06);}
-  .slot .ico{width:26px;height:26px;flex:none;border-radius:7px;background:linear-gradient(160deg,#2a2333,#161019);
-    border:1px solid var(--line);display:grid;place-items:center;font-size:13px;}
-  .slot .meta{min-width:0;}
-  .slot .meta .nm{font-size:11.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .slot .meta .ty{font-size:9.5px;color:var(--ink-mute);font-weight:600;}
-  /* tooltip carac au survol */
-  .slot .tip{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%) translateY(4px);
-    width:190px;background:#26212f;border:1px solid var(--line);border-radius:9px;padding:9px 11px;
-    box-shadow:0 16px 34px -12px rgba(0,0,0,.85);opacity:0;pointer-events:none;transition:.16s;z-index:20;}
-  .slot:hover .tip{opacity:1;transform:translateX(-50%) translateY(0);}
-  .slot .tip .tnm{font-family:var(--font-display);font-size:12px;color:var(--gold-bright);margin-bottom:5px;}
-  .slot .tip ul{list-style:none;margin:0;padding:0;display:grid;gap:2px;}
-  .slot .tip li{font-size:11px;color:var(--ink-dim);display:flex;justify-content:space-between;gap:8px;}
-  .slot .tip li b{color:var(--ink);font-weight:700;}
-  .dofus-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px;}
-  .dslot{position:relative;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 40% 35%, rgba(224,178,90,.18), rgba(0,0,0,.35));
-    border:1px solid var(--line);display:grid;place-items:center;font-size:16px;cursor:default;transition:.15s;}
-  .dslot:hover{border-color:var(--gold);}
-  .dslot .tip{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%) translateY(4px);width:170px;
-    background:#26212f;border:1px solid var(--line);border-radius:9px;padding:8px 10px;box-shadow:0 16px 34px -12px rgba(0,0,0,.85);
-    opacity:0;pointer-events:none;transition:.16s;z-index:20;text-align:left;}
-  .dslot:hover .tip{opacity:1;transform:translateX(-50%) translateY(0);}
-  .dslot .tip .tnm{font-family:var(--font-display);font-size:11.5px;color:var(--gold-bright);margin-bottom:3px;}
-  .dslot .tip div{font-size:10.5px;color:var(--ink-dim);}
-
-  #panoplies{margin-top:12px;padding:11px 12px;border-radius:10px;background:rgba(224,178,90,.06);border:1px solid var(--line);}
-  #panoplies h4{margin:0 0 7px;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
-  #panoplies .pano{font-size:12px;margin-bottom:6px;}
-  #panoplies .pano:last-child{margin-bottom:0;}
-  #panoplies .pano .pn{font-weight:700;color:var(--ink);}
-  #panoplies .pano .pb{color:var(--ink-dim);font-size:11px;}
-
-  .footnote{margin-top:16px;text-align:center;color:var(--ink-mute);font-size:11px;}
-</style>
-<style id="glueCss">
-.dofus-row{grid-template-columns:repeat(6,1fr);gap:8px;}
-.dslot{aspect-ratio:auto !important;border-radius:10px;padding:8px 5px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:18px;}
-.dslot .dnm{font-size:9px;line-height:1.15;text-align:center;color:var(--ink-dim);max-height:24px;overflow:hidden;font-weight:600;}
-</style>
-<style id="respCss">
-@media(max-width:820px){
-  #out{grid-template-columns:1fr !important;gap:12px;}
-  .build-grid{grid-template-columns:1fr !important;}
-  .dofus-row{grid-template-columns:repeat(3,1fr) !important;}
-  .resbar{gap:8px;}
-  .picker{margin-left:0 !important;width:100%;}
-  #search2{flex:1 1 100%;min-width:120px;}
-  #arme2,#sort2{flex:1 1 100%;}
-  .silhouette{aspect-ratio:auto;min-height:90px;}
+:root{
+  --bg:#0d0b12; --surface:#171320; --surface-2:#1e1930;
+  --ink:#efe7d6; --ink-dim:#a99f8c;
+  --gold:#c9a24a; --gold-bright:#f3d98a; --gold-deep:#8a6d2c;
+  --positive:#7bd88f; --negative:#e2683f;
+  --elem-neutre:#c9c1b0; --elem-terre:#a9832f; --elem-feu:#e2683f; --elem-eau:#4aa3d8; --elem-air:#7bd88f;
+  --forge:#7bb2e0;
+  --radius:18px; --radius-sm:13px; --line:1px solid rgba(201,162,74,.22);
+  --shadow:0 2px 4px rgba(0,0,0,.34), 0 10px 26px rgba(0,0,0,.34), 0 28px 64px rgba(0,0,0,.30);
+  --glass:linear-gradient(180deg,rgba(32,26,46,.66),rgba(20,16,30,.74));
 }
-@media(max-width:480px){
-  .dofus-row{grid-template-columns:repeat(3,1fr) !important;}
-  .stats{grid-template-columns:repeat(2,1fr);}
+*{box-sizing:border-box}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes glow{0%,100%{text-shadow:0 0 20px rgba(201,162,74,.28)}50%{text-shadow:0 0 30px rgba(243,217,138,.5)}}
+@keyframes fill{from{width:0}to{width:100%}}
+.app{font-family:Inter,system-ui,sans-serif;color:var(--ink);min-height:100vh;position:relative;
+  background:
+    radial-gradient(1100px 560px at 15% -12%, rgba(201,162,74,.10), transparent 60%),
+    radial-gradient(900px 520px at 92% 0%, rgba(138,109,44,.10), transparent 58%),
+    linear-gradient(180deg,#100d16,#0d0b12);
+  padding:22px clamp(14px,4vw,44px) 64px;}
+.app::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:overlay;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
+.wrap{max-width:1220px;margin:0 auto;position:relative;z-index:1}
+.app h1,.app h2,.app h3,.app h4{font-family:Cinzel,serif;font-weight:600;letter-spacing:.02em;margin:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* Topbar + stepper */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand .mk{width:44px;height:44px;border-radius:14px;position:relative;
+  background:radial-gradient(120% 120% at 30% 20%,#241d16,#0f0c08);
+  border:1px solid var(--gold);box-shadow:0 0 0 1px rgba(243,217,138,.15),0 6px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(243,217,138,.2);
+  display:grid;place-items:center;font-family:Cinzel;font-weight:700}
+.brand .mk b{font-size:18px;letter-spacing:.02em;background:linear-gradient(180deg,var(--gold-bright),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand h1{font-size:21px;letter-spacing:.04em}
+.brand span{display:block;font-family:Inter;font-weight:500;font-size:11.5px;color:var(--ink-dim);letter-spacing:.06em;margin-top:2px}
+#progress{display:flex;gap:6px;background:linear-gradient(180deg,#1a1523,#141020);border:var(--line);border-radius:20px;padding:6px;box-shadow:var(--shadow),inset 0 1px 0 rgba(243,217,138,.06)}
+.pstep{display:flex;align-items:center;gap:11px;padding:9px 15px;border-radius:14px;cursor:pointer;
+  background:transparent;border:1px solid transparent;transition:.2s;min-width:0}
+.pstep:hover{background:rgba(201,162,74,.06)}
+.pstep .pnum{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-family:Cinzel;
+  font-size:12px;font-weight:700;background:#241d2f;color:var(--ink-dim);flex:none;border:1px solid rgba(201,162,74,.2)}
+.pstep .plabel{font-family:Cinzel;font-weight:600;font-size:14px;letter-spacing:.03em;color:var(--ink-dim);white-space:nowrap}
+.pstep .plabel small{display:block;font-family:Inter;font-weight:400;font-size:10.5px;opacity:.8;letter-spacing:0;margin-top:1px}
+/* stepper states derived from wrapper data-step */
+[data-step="1"] .pstep[data-goto="1"], [data-step="2"] .pstep[data-goto="2"], [data-step="3"] .pstep[data-goto="3"]{
+  background:linear-gradient(180deg,rgba(201,162,74,.16),rgba(201,162,74,.05));border-color:rgba(201,162,74,.5)}
+[data-step="1"] .pstep[data-goto="1"] .pnum,[data-step="2"] .pstep[data-goto="2"] .pnum,[data-step="3"] .pstep[data-goto="3"] .pnum{
+  background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#1a1206;border-color:transparent;box-shadow:0 0 14px rgba(201,162,74,.4)}
+[data-step="1"] .pstep[data-goto="1"] .plabel,[data-step="2"] .pstep[data-goto="2"] .plabel,[data-step="3"] .pstep[data-goto="3"] .plabel{color:var(--ink)}
+[data-step="2"] .pstep[data-goto="1"] .pnum,[data-step="3"] .pstep[data-goto="1"] .pnum,[data-step="3"] .pstep[data-goto="2"] .pnum{
+  background:rgba(123,216,143,.14);color:var(--positive);border-color:rgba(123,216,143,.4)}
+[data-step="2"] .pstep[data-goto="1"] .pnum::after,[data-step="3"] .pstep[data-goto="1"] .pnum::after,[data-step="3"] .pstep[data-goto="2"] .pnum::after{content:"\2713"}
+[data-step="2"] .pstep[data-goto="1"] .pnum b,[data-step="3"] .pstep[data-goto="1"] .pnum b,[data-step="3"] .pstep[data-goto="2"] .pnum b{display:none}
+
+/* Steps visibility */
+.step{animation:rise .28s ease both}
+[data-step="1"] #step2,[data-step="1"] #step3,[data-step="2"] #step1,[data-step="2"] #step3,[data-step="3"] #step1,[data-step="3"] #step2{display:none}
+
+/* Cards + fields */
+.card{background:var(--glass);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);border:var(--line);border-radius:var(--radius);padding:18px;
+  box-shadow:var(--shadow),inset 0 1px 0 rgba(243,217,138,.05);position:relative}
+.card + .card{margin-top:12px}
+.chd{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid rgba(201,162,74,.14)}
+.chd h3{font-size:16px;letter-spacing:.06em;color:var(--gold-bright)}
+.chd .tag{margin-left:auto;font-size:10px;font-family:Inter;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(201,162,74,.35);border-radius:20px;padding:3px 10px}
+.chd .bar{width:14px;height:14px;flex:none;transform:rotate(45deg);background:linear-gradient(135deg,var(--gold-bright),var(--gold-deep));border-radius:3px;box-shadow:0 0 10px rgba(201,162,74,.4)}
+.field{margin-bottom:16px}
+.field > label{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:7px}
+.app input[type=text],.app input[type=number],.app select{width:100%;background:#0f0c15;border:1px solid rgba(201,162,74,.2);
+  color:var(--ink);border-radius:14px;padding:11px 14px;font-family:Inter;font-size:14px;outline:none;transition:.16s}
+.app input:focus,.app select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,74,.16)}
+.hint{font-size:11.5px;color:var(--ink-dim);margin-top:6px;line-height:1.5}
+
+/* Segmented */
+.seg{display:inline-flex;background:#0f0c15;border:1px solid rgba(201,162,74,.2);border-radius:14px;padding:4px;gap:2px}
+.seg label{position:relative;cursor:pointer}
+.seg label input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.seg label span{display:block;padding:7px 16px;border-radius:11px;font-size:13px;font-weight:600;font-family:Inter;letter-spacing:.01em;color:var(--ink-dim);transition:.16s;white-space:nowrap}
+.seg label input:checked + span{background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#1a1206;box-shadow:0 2px 8px rgba(201,162,74,.35)}
+
+/* Chips (elements + objectives + parchotage) */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:22px;
+  font-size:13px;font-weight:600;font-family:Inter;letter-spacing:.01em;background:#0f0c15;
+  border:1px solid rgba(201,162,74,.18);color:var(--ink-dim);transition:.16s}
+.chip input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.chip:hover{border-color:rgba(201,162,74,.45)}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:var(--ec,var(--ink-dim))}
+.chip.elem{--ec:var(--elem-neutre)}
+.chip.elem[data-el="Neutre"]{--ec:var(--elem-neutre)}
+.chip.elem[data-el="Terre"]{--ec:var(--elem-terre)}
+.chip.elem[data-el="Feu"]{--ec:var(--elem-feu)}
+.chip.elem[data-el="Eau"]{--ec:var(--elem-eau)}
+.chip.elem[data-el="Air"]{--ec:var(--elem-air)}
+.chip.elem input:checked ~ span{color:var(--ink)}
+.chip.elem:has(input:checked){background:color-mix(in srgb, var(--ec) 20%, #0f0c15);border-color:var(--ec);color:var(--ink)}
+.chip.obj:has(input:checked){background:rgba(201,162,74,.16);border-color:var(--gold);color:var(--ink)}
+.chip.obj .ck{width:15px;height:15px;border-radius:4px;border:1.5px solid rgba(201,162,74,.4);display:grid;place-items:center;font-size:10px;color:transparent}
+.chip.obj:has(input:checked) .ck{background:var(--gold);border-color:var(--gold);color:#1a1206}
+.chip:not(.elem):not(.obj):has(input:checked){background:rgba(201,162,74,.14);border-color:var(--gold);color:var(--ink)}
+
+/* Buttons */
+.btn{font-family:Cinzel;font-weight:600;letter-spacing:.05em;font-size:14px;cursor:pointer;
+  border-radius:14px;padding:12px 24px;border:1px solid rgba(201,162,74,.3);background:#171220;color:var(--ink);transition:.16s}
+.btn:hover{border-color:var(--gold);transform:translateY(-1px)}
+.btn.primary{background:linear-gradient(180deg,var(--gold-bright),var(--gold));border-color:transparent;color:#1a1206;
+  box-shadow:0 6px 20px rgba(201,162,74,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.primary:hover{box-shadow:0 10px 28px rgba(201,162,74,.5)}
+.btn .k{font-family:Inter;font-size:11px;opacity:.7;letter-spacing:0}
+.nav{display:flex;justify-content:space-between;gap:12px;margin-top:20px}
+
+/* Autocomplete */
+.ac{position:relative}
+.aclist{margin-top:6px;background:var(--surface-2);border:var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.aclist .it{display:flex;align-items:center;gap:11px;padding:10px 13px;cursor:pointer;border-bottom:1px solid rgba(201,162,74,.1)}
+.aclist .it:last-child{border-bottom:none}
+.aclist .it:hover{background:rgba(201,162,74,.1)}
+.aclist .it .ic{width:28px;height:28px;border-radius:6px;background:radial-gradient(120% 120% at 30% 20%,#2a2113,#14100a);border:1px solid rgba(201,162,74,.3);flex:none}
+.aclist .it .nm{font-weight:600;font-size:13px}
+.aclist .it .lv{margin-left:auto;font-size:11px;color:var(--gold)}
+
+/* Layout helpers */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.mini{flex:1;min-width:90px}
+.check{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--ink-dim)}
+.check input{width:16px;height:16px;accent-color:var(--gold)}
+
+/* ---- STEP 1 portrait ---- */
+.p1grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+.persoview{border-radius:var(--radius);border:var(--line);position:relative;overflow:hidden;min-height:320px;
+  background:radial-gradient(120% 80% at 50% 0,rgba(201,162,74,.12),transparent 62%),linear-gradient(180deg,#181320,#120e1c);
+  box-shadow:var(--shadow),inset 0 1px 0 rgba(243,217,138,.05);display:flex;flex-direction:column}
+.persoview .frame{flex:1;position:relative;margin:16px}
+.persoview .cls{padding:0 16px 18px;font-family:Cinzel;font-weight:700;font-size:16px;letter-spacing:.1em;color:var(--gold-bright);text-align:center}
+
+/* ---- STEP 3 hero ---- */
+.hero{position:relative;border-radius:24px;padding:22px 26px;margin-bottom:14px;overflow:hidden;
+  background:radial-gradient(120% 160% at 80% 0,rgba(201,162,74,.14),transparent 55%),linear-gradient(180deg,#1d1728,#161020);
+  border:1px solid rgba(201,162,74,.4);box-shadow:var(--shadow),inset 0 1px 0 rgba(243,217,138,.1);animation:rise .3s ease both}
+.hero::after{content:"\2726";position:absolute;top:16px;right:22px;font-size:22px;color:rgba(201,162,74,.35)}
+.hero .lab{font-family:Cinzel;font-weight:600;letter-spacing:.1em;font-size:12.5px;color:var(--gold);margin-bottom:12px}
+#dmgHead{font-family:Cinzel;font-weight:700;font-size:clamp(26px,3.6vw,40px);line-height:1.05;color:var(--ink);animation:glow 3.6s ease-in-out infinite}
+#dmgHead b{background:linear-gradient(180deg,var(--gold-bright),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+#dmgHead .u{font-family:Inter;font-size:13px;color:var(--ink-dim);font-weight:500;letter-spacing:.02em}
+#dmgHead .sep{color:rgba(201,162,74,.5);margin:0 9px;font-weight:400}
+#dmgHead .crit{color:var(--gold-bright)}
+.submetrics{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px;position:relative}
+.metric{flex:1;min-width:96px;background:rgba(15,12,21,.55);border:1px solid rgba(201,162,74,.2);border-radius:14px;padding:10px 13px}
+.metric i{display:block;font-style:normal;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-dim);margin-bottom:5px}
+.metric b{font-size:17px;font-weight:700;font-family:Cinzel}
+.metric.crit b{color:var(--gold-bright)}
+
+/* inline edit bar */
+.editbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:var(--glass);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);border:var(--line);border-radius:var(--radius);padding:15px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
+.editbar .grp{display:flex;flex-direction:column;gap:7px}
+.editbar .grp > label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim)}
+.editbar .ac{min-width:220px}
+#optiBar{height:6px;border-radius:3px;background:#0f0c15;overflow:hidden;margin-top:14px;border:1px solid rgba(201,162,74,.15)}
+#optiBar>span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold-deep),var(--gold-bright));transition:width .3s ease}
+#optiPct{font-size:11px;color:var(--gold);font-weight:600}
+
+/* ---- RESULT #out ---- */
+#out{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.15fr) minmax(0,1.05fr);gap:12px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px}
+.block{background:var(--glass);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);border:var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);animation:rise .3s ease both}
+.block h4{font-size:13px;letter-spacing:.08em;color:var(--gold-bright);margin-bottom:14px;
+  padding-bottom:10px;border-bottom:1px solid rgba(201,162,74,.16);display:flex;align-items:center;gap:9px}
+.block h4::before{content:"\2726";font-size:12px;color:var(--gold)}
+.block.def h4{color:var(--positive)} .block.def h4::before{color:var(--positive)}
+.block.util h4{color:var(--ink-dim)} .block.util h4::before{color:var(--ink-dim)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:1px 14px}
+.st{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;min-width:0}
+.st:hover{background:rgba(201,162,74,.07)}
+.st i{font-style:normal;font-size:12.5px;color:var(--ink-dim);white-space:nowrap}
+.st b{margin-left:auto;font-weight:700;font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+.st::before{content:"";width:7px;height:7px;border-radius:2px;flex:none;background:var(--ec,rgba(201,162,74,.55));transform:rotate(45deg)}
+.st[data-el] i{color:var(--ec)} .st[data-el] b{color:var(--ec)}
+.st[data-el="Neutre"]{--ec:var(--elem-neutre)}
+.st[data-el="Terre"]{--ec:var(--elem-terre)}
+.st[data-el="Feu"]{--ec:var(--elem-feu)}
+.st[data-el="Eau"]{--ec:var(--elem-eau)}
+.st[data-el="Air"]{--ec:var(--elem-air)}
+.st.big{grid-column:1/-1;background:#0f0c15;border:1px solid rgba(201,162,74,.18);padding:9px 11px}
+.st.big b{font-size:19px;font-family:Cinzel}
+
+/* build center */
+.build{background:var(--glass);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);border:var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);animation:rise .3s ease both}
+.build-head{display:flex;align-items:center;gap:13px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(201,162,74,.16)}
+.build-head .bh-art{width:50px;height:50px;border-radius:14px;overflow:hidden;flex:none;border:1px solid rgba(201,162,74,.3);
+  background:radial-gradient(120% 90% at 50% 4%,rgba(201,162,74,.16),transparent 60%),linear-gradient(180deg,#181320,#120e1c)}
+.build-head h4{font-size:13px;letter-spacing:.08em;color:var(--gold-bright);display:flex;align-items:center;gap:8px}
+.build-head h4::before{content:"\2726";font-size:12px;color:var(--gold)}
+.build-head small{display:block;font-family:Inter;font-weight:400;font-size:11px;color:var(--ink-dim);letter-spacing:.02em;margin-top:3px}
+/* paper-doll (comme l'inventaire Dofus) */
+.paperdoll{display:grid;grid-template-columns:auto minmax(94px,1fr) auto;gap:12px;align-items:stretch}
+.pd-col{display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.figure{position:relative;border-radius:20px;overflow:hidden;min-height:340px;
+  border:1px solid rgba(201,162,74,.3);
+  background:radial-gradient(120% 70% at 50% 4%,rgba(201,162,74,.16),transparent 62%),linear-gradient(180deg,#181320,#120e1c);
+  box-shadow:inset 0 1px 0 rgba(243,217,138,.06)}
+.slot{position:relative;width:58px;height:58px;border-radius:16px;cursor:pointer;transition:.16s;
+  background:radial-gradient(120% 120% at 30% 18%,#241c11,#14100a);border:1px solid rgba(201,162,74,.3);display:grid;place-items:center}
+.slot:hover{border-color:var(--gold);box-shadow:0 6px 16px rgba(0,0,0,.4),0 0 20px rgba(201,162,74,.4);transform:translateY(-2px);z-index:40}
+.slot svg{width:30px;height:30px;stroke:var(--gold-bright);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.slot.wslot svg{width:33px;height:33px}
+.slot svg.gi{width:34px;height:34px;fill:var(--gold-bright);stroke:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}
+.slot.wslot svg.gi{width:37px;height:37px}
+.slot[data-fg]{border-color:var(--gold)}
+.slot[data-fg] svg{stroke:var(--gold-bright)}
+.slot[data-fg]::after{content:"";position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:var(--gold-bright);box-shadow:0 0 8px rgba(201,162,74,.5);border:1px solid #0d0b12}
+.dofsec{margin:16px 0 10px;font-family:Cinzel;font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);text-align:center}
+.dofrow{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.dslot{position:relative;width:48px;height:48px;border-radius:50%;background:radial-gradient(120% 120% at 30% 20%,#241c11,#14100a);border:1px solid rgba(201,162,74,.3);
+  display:grid;place-items:center;cursor:pointer;transition:.16s}
+.dslot:hover{border-color:var(--gold);box-shadow:0 0 14px rgba(201,162,74,.4);z-index:40;transform:translateY(-1px)}
+.dslot svg{width:26px;height:26px;stroke:var(--gold-bright);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+
+/* Tooltip */
+.tip{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);width:max-content;min-width:220px;max-width:340px;z-index:60;
+  background:var(--surface-2);border:1px solid var(--gold);border-radius:16px;padding:14px;
+  box-shadow:0 18px 44px rgba(0,0,0,.6);opacity:0;visibility:hidden;transition:.15s;pointer-events:none}
+.slot:hover .tip,.dslot:hover .tip{opacity:1;visibility:visible;transform:translateX(-50%) translateY(-4px)}
+.pd-col:first-child .slot .tip{left:0;transform:none}
+.pd-col:first-child .slot:hover .tip{transform:translateY(-4px)}
+.pd-col:last-child .slot .tip{left:auto;right:0;transform:none}
+.pd-col:last-child .slot:hover .tip{transform:translateY(-4px)}
+.tip .tnm{font-family:Cinzel;font-weight:700;font-size:14px;color:var(--gold-bright);margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid rgba(201,162,74,.25)}
+.tip ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.tip li{font-size:12px;color:var(--ink);display:flex;justify-content:space-between;gap:8px}
+.tip li .num{color:var(--positive);font-variant-numeric:tabular-nums;font-weight:600}
+.tip li.dl{color:var(--ink-dim);font-style:italic;display:block}
+.tip li.passive{color:var(--elem-air)}
+.tip li.fgline{color:var(--forge)}
+.tip li.fgline .num{color:var(--forge)}
+
+/* Panoplies + Forge */
+.subgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+#panoplies,#forgeBox{background:var(--glass);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);border:var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+#panoplies h4,#forgeBox h4{font-size:13px;letter-spacing:.08em;color:var(--gold-bright);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(201,162,74,.16)}
+#forgeBox h4{color:var(--forge)}
+.pano{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(201,162,74,.1);font-size:13px}
+.pano:last-child{border-bottom:none}
+.pano .pt{color:var(--ink)} .pano .pv{color:var(--positive);font-variant-numeric:tabular-nums;font-weight:600}
+#forgeBox .pano .pv{color:var(--forge)}
+
+#err{display:none}
+#appVer{margin-top:28px;text-align:center;font-family:Cinzel;font-size:11px;letter-spacing:.1em;color:rgba(169,159,140,.5)}
+
+/* Responsive */
+@media(max-width:900px){
+  .topbar{flex-direction:column;align-items:stretch}
+  #progress{overflow-x:auto}
+  .pstep .plabel small{display:none}
+  .p1grid,.grid2{grid-template-columns:1fr}
+  #out{grid-template-columns:1fr}
+  .subgrid{grid-template-columns:1fr}
 }
-</style>
-<style id="imgCss">
-.slot .ico img{width:100%;height:100%;object-fit:contain;}
-.dslot img{width:26px;height:26px;object-fit:contain;}
-.tip li.dl{display:block;color:var(--ink-dim);}
-.tip li.passive{color:var(--gold-bright,#e0b25a);margin-top:3px;font-weight:600;}
-.tip li.fgline{display:block;color:#5aa9ff;font-weight:600;}
-.ver{position:fixed;bottom:10px;right:12px;z-index:60;font-size:10px;letter-spacing:.04em;color:var(--ink-dim);opacity:.5;padding:2px 8px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.10);border-radius:20px;pointer-events:none;backdrop-filter:blur(4px);}
-.ver:hover{opacity:.9;}
-.combolist{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:50;max-height:280px;overflow:auto;background:#161320;border:1px solid rgba(255,255,255,.14);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.55);display:none;}
-.combolist .cmi{padding:8px 12px;font-size:13px;color:var(--ink,#e8e2d5);cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);}
-.combolist .cmi:last-child{border-bottom:0;}
-.combolist .cmi:hover{background:rgba(201,162,74,.20);}
-.combolist .cmi.none{opacity:.55;cursor:default;}
-.slot[data-fg] .ico, .dslot[data-fg]{box-shadow:0 0 0 1.5px #5aa9ff inset;border-radius:8px;}
-.tip ul{max-height:260px;overflow:auto;}
+
+/* ===== Intégration : compat colle JS + overrides stepper/steps ===== */
+:root{--el-neutre:var(--elem-neutre);--el-terre:var(--elem-terre);--el-feu:var(--elem-feu);--el-eau:var(--elem-eau);--el-air:var(--elem-air);}
+.step{display:none}
+.step.show{display:block;animation:rise .28s ease both}
+.pstep{cursor:pointer}
+.pstep.active{background:linear-gradient(180deg,rgba(201,162,74,.16),rgba(201,162,74,.05));border-color:rgba(201,162,74,.5)}
+.pstep.active .pnum{background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#1a1206;border-color:transparent;box-shadow:0 0 14px rgba(201,162,74,.4)}
+.pstep.active .plabel{color:var(--ink)}
+.pstep.done .pnum{background:rgba(123,216,143,.14);color:var(--positive);border-color:rgba(123,216,143,.4)}
+.pstep.done .pnum b{display:none}
+.pstep.done .pnum::after{content:"\2713"}
+.chip.checked{border-color:var(--gold);color:var(--ink)}
+.chip.elem.checked{background:color-mix(in srgb,var(--ec) 20%,#0f0c15)}
+.st[data-el]{--ec:var(--el)}
+.st[data-el] i{color:var(--ec)}
+.st[data-el] b{color:var(--ec)}
+.tip li b{margin-left:auto;color:var(--positive);font-weight:600;font-variant-numeric:tabular-nums}
+.tip li.fgline{color:var(--forge);display:block}
+.tip li.fgline b{color:var(--forge)}
+.tip li.dl{color:var(--ink-dim);font-style:italic;display:block}
+.tip li.passive{color:var(--elem-air);display:block}
+.tip ul{max-height:min(70vh,440px);overflow:auto}
+.slot img{width:70%;height:70%;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}
+.slot .emo{font-size:26px;line-height:1}
+.slot.wslot .emo{font-size:29px}
+.dslot img{width:64%;height:64%;object-fit:contain}
+.dslot .emo{font-size:22px;line-height:1}
+.pano .pn{color:var(--ink)}
+.pano .pb{color:var(--positive);font-variant-numeric:tabular-nums;text-align:right}
+#forgeBox .pano .pb{color:var(--forge)}
+.combolist{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:70;max-height:min(64vh,480px);overflow:auto;background:var(--surface-2);border:var(--line);border-radius:16px;box-shadow:var(--shadow);display:none}
+.combolist .cmi{padding:9px 13px;font-size:13px;line-height:1.25;color:var(--ink);cursor:pointer;border-bottom:1px solid rgba(201,162,74,.1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.combolist .cmi:last-child{border-bottom:0}
+.combolist .cmi:hover{background:rgba(201,162,74,.1)}
+.combolist .cmi.none{opacity:.55;cursor:default}
+#err{display:none;margin-top:10px;color:var(--negative);font-size:13px;font-weight:600}
+#err.show{display:block}
+.figure .fcaption{position:absolute;left:0;right:0;bottom:0;padding:12px;text-align:center;font-family:Cinzel;font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--gold-bright);background:linear-gradient(0deg,rgba(13,11,18,.9),transparent)}
+.figure .fcrest{position:absolute;inset:0;display:grid;place-items:center;font-size:54px;color:rgba(201,162,74,.28)}
+.persoview .fcrest{position:absolute;inset:0;display:grid;place-items:center;font-size:64px;color:rgba(201,162,74,.25)}
+#appVer{cursor:default}
+.editbar select{min-width:200px}
+.editbar .ac select{min-width:0}
+
 </style>
 </head>
 <body>
+<div class="app">
   <div class="wrap">
 
-    <header class="masthead">
-      <div class="crest">✦</div>
-      <h1>Optimiseur de <span>Stuff</span></h1>
-      <div class="sub">Dofus 3</div>
-      <div class="ver" id="appVer" title="Version en ligne">2026.07.12-0118</div>
-    </header>
-    <script>(function(){var v=document.getElementById('appVer');if(!v)return;var t=v.textContent.trim();v.textContent=(t==='@@'+'BUILD@@')?'dev (local)':('v '+t);})();
-    window.addEventListener('load',function(){try{if(typeof DATA!=='undefined'&&DATA.__meta&&DATA.__meta.date){var v=document.getElementById('appVer');if(v)v.textContent+=' · données '+DATA.__meta.date+(DATA.__meta.patch?(' ('+DATA.__meta.patch+')'):'');}}catch(e){}});</script>
-
-    <nav class="progress" id="progress">
-      <div class="pstep active" data-goto="1"><span class="num">1</span><span class="plabel">Personnage</span><span class="plabel-sm">Étape 1</span></div>
-      <div class="pstep" data-goto="2"><span class="num">2</span><span class="plabel">Objectifs</span><span class="plabel-sm">Étape 2</span></div>
-      <div class="pstep" data-goto="3"><span class="num">✦</span><span class="plabel">Résultat</span><span class="plabel-sm">Résultat</span></div>
-    </nav>
-
-    <div class="card">
-      <div class="card-top"></div>
-      <div class="card-body">
-
-        <!-- ============ ÉTAPE 1 — PERSONNAGE ============ -->
-        <section id="step1" class="step show">
-          <div class="step-head">
-            <div class="step-eyebrow">Étape 1</div>
-            <h2>Votre personnage</h2>
-          </div>
-          <div class="grid2">
-            <div class="field">
-              <div class="flabel">Classe</div>
-              <select id="classe" class="in"></select>
-            </div>
-            <div class="field">
-              <div class="flabel">Niveau</div>
-              <input id="niveau" class="in" type="number" min="1" max="200" value="200">
-            </div>
-          </div>
-          <div class="field">
-            <div class="flabel">Parchotage
-              <span class="help" data-tip="Ajoute +100 à chaque caractéristique cochée. Décochez celles non montées.">?</span>
-            </div>
-            <div class="chips" id="pchWrap">
-              <label class="chip checked"><input type="checkbox" class="pch" data-k="Vitalité" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Vitalité</label>
-              <label class="chip checked"><input type="checkbox" class="pch" data-k="Sagesse" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Sagesse</label>
-              <label class="chip checked"><input type="checkbox" class="pch" data-k="Force" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Force</label>
-              <label class="chip checked"><input type="checkbox" class="pch" data-k="Intelligence" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Intelligence</label>
-              <label class="chip checked"><input type="checkbox" class="pch" data-k="Chance" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Chance</label>
-              <label class="chip checked"><input type="checkbox" class="pch" data-k="Agilité" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Agilité</label>
-            </div>
-          </div>
-          <div class="actions" style="justify-content:flex-end;">
-            <button id="toStep2" class="btn btn-primary">Suivant →</button>
-          </div>
-        </section>
-
-        <!-- ============ ÉTAPE 2 — OBJECTIFS ============ -->
-        <section id="step2" class="step">
-          <div class="step-head">
-            <div class="step-eyebrow">Étape 2</div>
-            <h2>Objectifs &amp; contraintes</h2>
-          </div>
-          <div class="grid2">
-            <div class="field">
-              <div class="flabel">Éléments visés <span class="accent">(dégâts)</span>
-                <span class="help" data-tip="Cochez ≥1 élément à optimiser. Plusieurs = build équilibré.">?</span>
-              </div>
-              <div class="chips">
-                <label class="chip" data-el style="--el:var(--el-neutre)"><input type="checkbox" class="telem" value="Neutre"><span class="dot"></span>Neutre</label>
-                <label class="chip" data-el style="--el:var(--el-terre)"><input type="checkbox" class="telem" value="Terre"><span class="dot"></span>Terre</label>
-                <label class="chip" data-el style="--el:var(--el-feu)"><input type="checkbox" class="telem" value="Feu"><span class="dot"></span>Feu</label>
-                <label class="chip" data-el style="--el:var(--el-eau)"><input type="checkbox" class="telem" value="Eau"><span class="dot"></span>Eau</label>
-                <label class="chip" data-el style="--el:var(--el-air)"><input type="checkbox" class="telem" value="Air"><span class="dot"></span>Air</label>
-              </div>
-            </div>
-            <div class="field">
-              <div class="flabel">Portée d'attaque
-                <span class="help" data-tip="Auto : le solveur choisit. Sinon force corps à corps ou distance.">?</span>
-              </div>
-              <div class="seg" id="rangeSeg">
-                <label class="on"><input type="radio" name="rangeMode" value="auto" checked>Auto</label>
-                <label><input type="radio" name="rangeMode" value="melee">Corps à corps</label>
-                <label><input type="radio" name="rangeMode" value="distance">Distance</label>
-              </div>
-            </div>
-          </div>
-
-          <div class="field">
-            <div class="flabel">Objectifs
-              <span class="help" data-tip="Contraintes secondaires : survie/tank, tacle, soins, prospection, retrait PA/PM.">?</span>
-            </div>
-            <div class="chips" id="objChecks"></div>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <div class="flabel">PA / PM / PO visés
-                <span class="help" data-tip="Seuils minimaux. « exo » autorise un point exotique.">?</span>
-              </div>
-              <div class="grid3">
-                <div>
-                  <p class="sub">PA</p>
-                  <div class="stat-row">
-                    <input id="paVise" class="in" type="number" min="0" max="12" value="12">
-                    <label class="toggle"><input type="checkbox" id="exoPa"><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>exo</label>
-                  </div>
-                </div>
-                <div>
-                  <p class="sub">PM</p>
-                  <div class="stat-row">
-                    <input id="pmVise" class="in" type="number" min="0" max="6" value="6">
-                    <label class="toggle"><input type="checkbox" id="exoPm"><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>exo</label>
-                  </div>
-                </div>
-                <div>
-                  <p class="sub">PO</p>
-                  <div class="stat-row">
-                    <input id="poVise" class="in" type="number" min="0" max="6" value="0">
-                    <label class="toggle"><input type="checkbox" id="exoPo"><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>exo</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="field">
-              <div class="flabel">Ennemis au contact
-                <span class="help" data-tip="Nombre d'ennemis adjacents supposés (mêlée). Utilisé par les passifs qui en dépendent, ex. Dofus Émeraude : bouclier = 4% PV par ennemi au contact.">?</span></div>
-              <input id="enemies" class="in" type="number" min="0" max="12" value="4" style="max-width:130px;">
-            </div>
-            <div class="field">
-              <div class="flabel">Optimiser pour une arme / sort précis
-                <span class="help" data-tip="Optionnel. Par défaut : build polyvalent (tu choisis l'arme dans le résultat). Ici tu optimises POUR une arme/sort précis — recommandé pour les armes multi-éléments (Songe, Faux, Arc Volkorne).">?</span></div>
-              <div class="seg" id="optSeg">
-                <label class="on"><input type="radio" name="optMode" value="auto" checked>Auto (polyvalent)</label>
-                <label><input type="radio" name="optMode" value="arme">Arme</label>
-                <label><input type="radio" name="optMode" value="sort">Sort</label>
-              </div>
-              <div id="optPick" style="margin-top:8px;display:none;position:relative;">
-                <input id="optSearch" class="in" type="text" placeholder="Tape le nom de l'arme (ex. Faux)…" autocomplete="off">
-                <input type="hidden" id="optArme"><input type="hidden" id="optSort">
-                <div id="optList" class="combolist"></div>
-              </div>
-              <div id="optFmWrap" style="margin-top:8px;display:none;align-items:center;gap:8px;flex-wrap:wrap;">
-                <span class="small" style="opacity:.7">FM élément (ligne Neutre) :</span>
-                <select id="optFm" class="in" style="max-width:130px;">
-                  <option value="">— aucune —</option><option value="Terre">Terre</option><option value="Feu">Feu</option><option value="Eau">Eau</option><option value="Air">Air</option>
-                </select>
-                <span class="small" style="opacity:.7">pénalité</span>
-                <input id="optFmPen" class="in" type="number" min="0" max="90" value="20" style="max-width:80px;"><span class="small" style="opacity:.7">%</span>
-              </div>
-            </div>
-            <div class="field">
-              <div class="flabel">Options
-                <span class="help" data-tip="Crit : calcule en 100 % crit. Phases : deux variantes de résultat.">?</span>
-              </div>
-              <div class="chips" style="gap:14px;">
-                <label class="toggle"><input type="checkbox" id="forceCrit"><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Forcer 100 % crit</label>
-                <label class="toggle"><input type="checkbox" id="forgeMax"><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Forge maximale <span class="help" data-tip="Simule un stuff parfaitement forgé : over/exo (crit, Do Critiques, Puissance) dans la limite de 101 densité par item + transcendance %Do sur les items sans crit. Over crit priorisé sur les items qui ont déjà du crit pour franchir 100 % crit.">?</span></label>
-                <label class="toggle checked"><input type="checkbox" id="phSalle" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Combat de salle</label>
-                <label class="toggle checked"><input type="checkbox" id="phVagues" checked><span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>Combat à vagues</label>
-              </div>
-            </div>
-          </div>
-
-          <div id="err"></div>
-
-          <div class="actions">
-            <button id="backStep1" class="btn btn-ghost">← Retour</button>
-            <button id="go" class="btn btn-primary">✦ Trouver un stuff</button>
-          </div>
-        </section>
-
-        <!-- ============ ÉTAPE 3 — RÉSULTAT ============ -->
-        <section id="step3" class="step">
-          <!-- Barre compacte du haut -->
-          <div class="resbar">
-            <div class="seg" id="varSeg">
-              <label class="on"><input type="radio" name="varMode" value="salle" checked>Combat de salle</label>
-              <label><input type="radio" name="varMode" value="vagues">Combat à vagues</label>
-            </div>
-            <div id="dmgHead"><b>1 842</b> dégâts / coup</div>
-            <div class="picker">
-              <div class="seg" id="srcSeg">
-                <label class="on"><input type="radio" name="src2" value="arme" checked>Arme</label>
-                <label><input type="radio" name="src2" value="sort">Sort</label>
-              </div>
-              <input id="search2" class="in" type="text" placeholder="Rechercher une arme ou un sort…">
-              <select id="arme2" class="in"></select>
-              <select id="sort2" class="in" style="display:none;"></select>
-            </div>
-          </div>
-
-          <!-- Grille 3 colonnes (données d'exemple ; le moteur réécrit ces zones) -->
-          <div id="out">
-
-            <!-- ---- STATS GAUCHE ---- -->
-            <div class="col" id="statsLeft">
-              <div class="block">
-                <h4>Primaires</h4>
-                <div class="stats">
-                  <div class="st"><i>PA</i><b>12</b></div>
-                  <div class="st"><i>PM</i><b>6</b></div>
-                  <div class="st"><i>Portée</i><b>3</b></div>
-                  <div class="st"><i>Initiative</i><b>1 250</b></div>
-                  <div class="st"><i>Prospection</i><b>145</b></div>
-                  <div class="st"><i>Soins</i><b>28</b></div>
-                  <div class="st"><i>Tacle</i><b>42</b></div>
-                  <div class="st"><i>Fuite</i><b>18</b></div>
-                  <div class="st"><i>Retrait PA</i><b>36</b></div>
-                  <div class="st"><i>Retrait PM</i><b>31</b></div>
-                  <div class="st"><i>Puissance</i><b>120</b></div>
-                  <div class="st"><i>Pods</i><b>3 500</b></div>
-                </div>
-              </div>
-              <div class="block">
-                <h4>Caractéristiques</h4>
-                <div class="stats">
-                  <div class="st"><i>Vitalité</i><b>4 820</b></div>
-                  <div class="st"><i>Sagesse</i><b>410</b></div>
-                  <div class="st" data-el style="--el:var(--el-feu)"><i>Intelligence</i><b>886</b></div>
-                  <div class="st" data-el style="--el:var(--el-terre)"><i>Force</i><b>145</b></div>
-                  <div class="st" data-el style="--el:var(--el-eau)"><i>Chance</i><b>132</b></div>
-                  <div class="st" data-el style="--el:var(--el-air)"><i>Agilité</i><b>128</b></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ---- BUILD CENTRE ---- -->
-            <div id="buildCenter">
-              <div class="build">
-                <div class="build-grid">
-                  <div class="build-col">
-                    <div class="slot"><div class="ico">🪖</div><div class="meta"><div class="nm">Coiffe du Dragon</div><div class="ty">Coiffe</div></div>
-                      <div class="tip"><div class="tnm">Coiffe du Dragon</div><ul><li>Vitalité<b>+320</b></li><li>Intelligence<b>+80</b></li><li>Do Feu<b>+12</b></li></ul></div></div>
-                    <div class="slot"><div class="ico">📿</div><div class="meta"><div class="nm">Amulette Royale</div><div class="ty">Amulette</div></div>
-                      <div class="tip"><div class="tnm">Amulette Royale</div><ul><li>Sagesse<b>+60</b></li><li>Intelligence<b>+70</b></li><li>PA<b>+1</b></li></ul></div></div>
-                    <div class="slot"><div class="ico">💍</div><div class="meta"><div class="nm">Anneau du Brasier</div><div class="ty">Anneau</div></div>
-                      <div class="tip"><div class="tnm">Anneau du Brasier</div><ul><li>Intelligence<b>+90</b></li><li>Do Feu<b>+15</b></li><li>Crit<b>+4%</b></li></ul></div></div>
-                    <div class="slot"><div class="ico">🎗️</div><div class="meta"><div class="nm">Ceinture Ardente</div><div class="ty">Ceinture</div></div>
-                      <div class="tip"><div class="tnm">Ceinture Ardente</div><ul><li>Vitalité<b>+250</b></li><li>Intelligence<b>+65</b></li><li>Puissance<b>+40</b></li></ul></div></div>
-                  </div>
-
-                  <div class="build-col">
-                    <div class="silhouette">
-                      <div>
-                        <div class="cls">Féca — Feu</div>
-                        <div>Niveau 200</div>
-                        <div style="margin-top:6px;opacity:.6;">silhouette du personnage</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="build-col">
-                    <div class="slot"><div class="ico">🧥</div><div class="meta"><div class="nm">Cape Incandescente</div><div class="ty">Cape</div></div>
-                      <div class="tip"><div class="tnm">Cape Incandescente</div><ul><li>Intelligence<b>+75</b></li><li>PM<b>+1</b></li><li>Do<b>+10</b></li></ul></div></div>
-                    <div class="slot"><div class="ico">💍</div><div class="meta"><div class="nm">Anneau des Flammes</div><div class="ty">Anneau</div></div>
-                      <div class="tip"><div class="tnm">Anneau des Flammes</div><ul><li>Intelligence<b>+85</b></li><li>Sagesse<b>+40</b></li><li>Do Feu<b>+10</b></li></ul></div></div>
-                    <div class="slot"><div class="ico">🥾</div><div class="meta"><div class="nm">Bottes du Volcan</div><div class="ty">Bottes</div></div>
-                      <div class="tip"><div class="tnm">Bottes du Volcan</div><ul><li>Vitalité<b>+180</b></li><li>PM<b>+1</b></li><li>Tacle<b>+25</b></li></ul></div></div>
-                    <div class="slot"><div class="ico">🛡️</div><div class="meta"><div class="nm">Bouclier Séraphique</div><div class="ty">Bouclier</div></div>
-                      <div class="tip"><div class="tnm">Bouclier Séraphique</div><ul><li>Vitalité<b>+200</b></li><li>Rés Feu<b>+15%</b></li><li>Puissance<b>+30</b></li></ul></div></div>
-                  </div>
-                </div>
-
-                <div class="dofus-row">
-                  <div class="dslot">🔥<div class="tip"><div class="tnm">Dofus Pourpre</div><div>Do Feu +12</div></div></div>
-                  <div class="dslot">💎<div class="tip"><div class="tnm">Dofus Turquoise</div><div>Initiative +200</div></div></div>
-                  <div class="dslot">⚡<div class="tip"><div class="tnm">Dofus Cawotte</div><div>Vitalité +100</div></div></div>
-                  <div class="dslot">🌿<div class="tip"><div class="tnm">Dofus Émeraude</div><div>Vitalité +30%</div></div></div>
-                  <div class="dslot">🏆<div class="tip"><div class="tnm">Trophée Puissance</div><div>Puissance +40</div></div></div>
-                  <div class="dslot">🏆<div class="tip"><div class="tnm">Trophée Do Feu</div><div>Do Feu +15</div></div></div>
-                </div>
-
-                <div id="panoplies">
-                  <h4>Bonus de panoplie</h4>
-                  <div class="pano"><span class="pn">Panoplie du Brasier (4/6)</span> <span class="pb">— +80 Intelligence, +2 PA, +15 Do Feu</span></div>
-                  <div class="pano"><span class="pn">Panoplie Séraphique (2/3)</span> <span class="pb">— +150 Vitalité, +10% Rés Feu</span></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ---- STATS DROITE ---- -->
-            <div class="col" id="statsRight">
-              <div class="block">
-                <h4>Dommages</h4>
-                <div class="stats">
-                  <div class="st" data-el style="--el:var(--el-neutre)"><i>Do Neutre</i><b>+18</b></div>
-                  <div class="st" data-el style="--el:var(--el-terre)"><i>Do Terre</i><b>+15</b></div>
-                  <div class="st" data-el style="--el:var(--el-feu)"><i>Do Feu</i><b>+64</b></div>
-                  <div class="st" data-el style="--el:var(--el-eau)"><i>Do Eau</i><b>+15</b></div>
-                  <div class="st" data-el style="--el:var(--el-air)"><i>Do Air</i><b>+15</b></div>
-                  <div class="st"><i>Do Critiques</i><b>+22</b></div>
-                  <div class="st"><i>Do fixes</i><b>+30</b></div>
-                  <div class="st"><i>% Do Armes</i><b>+18%</b></div>
-                  <div class="st"><i>% Do Sorts</i><b>+12%</b></div>
-                  <div class="st"><i>% Do Mêlée</i><b>+10%</b></div>
-                  <div class="st"><i>% Do Distance</i><b>+8%</b></div>
-                  <div class="st"><i>Puissance</i><b>+120</b></div>
-                </div>
-              </div>
-              <div class="block">
-                <h4>Résistances</h4>
-                <div class="stats">
-                  <div class="st" data-el style="--el:var(--el-neutre)"><i>Rés Neutre</i><b>18%</b></div>
-                  <div class="st" data-el style="--el:var(--el-terre)"><i>Rés Terre</i><b>15%</b></div>
-                  <div class="st" data-el style="--el:var(--el-feu)"><i>Rés Feu</i><b>32%</b></div>
-                  <div class="st" data-el style="--el:var(--el-eau)"><i>Rés Eau</i><b>15%</b></div>
-                  <div class="st" data-el style="--el:var(--el-air)"><i>Rés Air</i><b>12%</b></div>
-                  <div class="st"><i>Rés fixe</i><b>+25</b></div>
-                  <div class="st"><i>% Rés Mêlée</i><b>10%</b></div>
-                  <div class="st"><i>% Rés Distance</i><b>8%</b></div>
-                  <div class="st"><i>Rés Critiques</i><b>+15</b></div>
-                  <div class="st"><i>Rés Poussée</i><b>+12</b></div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div class="actions" style="justify-content:flex-start;">
-            <button id="backEdit" class="btn btn-ghost">← Modifier</button>
-          </div>
-        </section>
-
+    <div class="topbar">
+      <div class="brand">
+        <div class="mk"><b>D3</b></div>
+        <h1>Optimiseur de Stuff<span>Dofus 3 &middot; d&eacute;g&acirc;ts &amp; tank</span></h1>
+      </div>
+      <div id="progress">
+        <div class="pstep active" data-goto="1"><span class="pnum"><b>1</b></span><span class="plabel">Personnage<small>Classe &amp; niveau</small></span></div>
+        <div class="pstep" data-goto="2"><span class="pnum"><b>2</b></span><span class="plabel">Objectifs<small>Ce que tu vises</small></span></div>
+        <div class="pstep" data-goto="3"><span class="pnum"><b>3</b></span><span class="plabel">R&eacute;sultat<small>Le build optimal</small></span></div>
       </div>
     </div>
 
-    <p class="footnote">Optimiseur de stuff — Dofus 3 · interface</p>
+    <!-- ============ STEP 1 ============ -->
+    <div id="step1" class="step show">
+      <div class="p1grid">
+        <div class="card">
+          <div class="chd"><span class="bar"></span><h3>Ton personnage</h3><span class="tag">&eacute;tape 1 / 3</span></div>
+          <div class="field">
+            <label for="classe">Classe</label>
+            <select id="classe"></select>
+          </div>
+          <div class="row">
+            <div class="field mini"><label for="niveau">Niveau</label><input id="niveau" type="number" min="1" max="200" value="200"></div>
+            <div class="field mini" style="flex:2"><label>Guidage</label><div class="hint" style="margin-top:8px">Niveau 200 par d&eacute;faut &mdash; le cas le plus courant. Change-le pour un build bas niveau.</div></div>
+          </div>
+          <div class="field">
+            <label>Parchotage &mdash; caract&eacute;ristiques scroll&eacute;es &agrave; 100</label>
+            <div id="pchWrap" class="chips">
+              <label class="chip checked"><input type="checkbox" class="pch" data-k="Vitalit&eacute;" checked><span>Vitalit&eacute;</span></label>
+              <label class="chip checked"><input type="checkbox" class="pch" data-k="Sagesse" checked><span>Sagesse</span></label>
+              <label class="chip checked"><input type="checkbox" class="pch" data-k="Force" checked><span>Force</span></label>
+              <label class="chip checked"><input type="checkbox" class="pch" data-k="Intelligence" checked><span>Intelligence</span></label>
+              <label class="chip checked"><input type="checkbox" class="pch" data-k="Chance" checked><span>Chance</span></label>
+              <label class="chip checked"><input type="checkbox" class="pch" data-k="Agilit&eacute;" checked><span>Agilit&eacute;</span></label>
+            </div>
+            <div class="hint">Coche les caract&eacute;ristiques parchot&eacute;es &agrave; 100 : elles lib&egrave;rent des points pour l'optimisation.</div>
+          </div>
+        </div>
+        <div class="persoview">
+          <div class="frame"><div class="fcrest">&#10022;</div></div>
+          <div class="cls">Ton personnage &middot; Niv 200</div>
+        </div>
+      </div>
+      <div class="nav"><span></span><button id="toStep2" class="btn primary">Suivant &middot; Objectifs &rarr;</button></div>
+    </div>
+
+    <!-- ============ STEP 2 ============ -->
+    <div id="step2" class="step">
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="chd"><span class="bar"></span><h3>Offense</h3><span class="tag">&eacute;l&eacute;ments &amp; arme</span></div>
+            <div class="field">
+              <label>&Eacute;l&eacute;ments vis&eacute;s <span style="color:var(--gold)">(d&eacute;g&acirc;ts)</span></label>
+              <div class="chips">
+                <label class="chip elem" data-el="Neutre"><input type="checkbox" class="telem" value="Neutre"><span class="dot"></span><span>Neutre</span></label>
+                <label class="chip elem" data-el="Terre"><input type="checkbox" class="telem" value="Terre"><span class="dot"></span><span>Terre</span></label>
+                <label class="chip elem" data-el="Feu"><input type="checkbox" class="telem" value="Feu"><span class="dot"></span><span>Feu</span></label>
+                <label class="chip elem" data-el="Eau"><input type="checkbox" class="telem" value="Eau"><span class="dot"></span><span>Eau</span></label>
+                <label class="chip elem" data-el="Air"><input type="checkbox" class="telem" value="Air"><span class="dot"></span><span>Air</span></label>
+              </div>
+              <div class="hint">Coche &ge;1 &eacute;l&eacute;ment &agrave; optimiser. Plusieurs = build &eacute;quilibr&eacute;. Couleur = rep&eacute;rage instantan&eacute;.</div>
+            </div>
+            <div class="field">
+              <label>Optimiser pour</label>
+              <div id="optSeg" class="seg">
+                <label><input type="radio" name="optMode" value="auto" checked><span>Polyvalent</span></label>
+                <label><input type="radio" name="optMode" value="arme"><span>Arme</span></label>
+                <label><input type="radio" name="optMode" value="sort"><span>Sort</span></label>
+              </div>
+              <div class="hint">Polyvalent : tu choisis l'arme dans le r&eacute;sultat. Arme / Sort : optimise POUR une attaque pr&eacute;cise (recommand&eacute; multi-&eacute;l&eacute;ments : Songe, Faux, Arc Volkorne).</div>
+            </div>
+            <div class="field" id="optPick">
+              <label for="optSearch">Arme / sort &agrave; optimiser</label>
+              <div class="ac" style="position:relative">
+                <input id="optSearch" type="text" placeholder="Tape le nom de l'arme (ex. Faux)&hellip;" autocomplete="off">
+                <input id="optArme" type="hidden"><input id="optSort" type="hidden">
+                <div id="optList" class="combolist"></div>
+              </div>
+            </div>
+            <div class="field" id="optFmWrap">
+              <label>Forgemagie &eacute;l&eacute;ment (FM) &mdash; ligne Neutre de l'arme</label>
+              <div class="row">
+                <select id="optFm" class="mini"><option value="">&mdash; aucune &mdash;</option><option value="Terre">Terre</option><option value="Feu">Feu</option><option value="Eau">Eau</option><option value="Air">Air</option></select>
+                <div class="field mini" style="margin:0"><label style="margin-bottom:4px">P&eacute;nalit&eacute; %</label><input id="optFmPen" type="number" min="0" max="90" value="20"></div>
+              </div>
+            </div>
+            <label class="check"><input id="forgeMax" type="checkbox"> Forge maximale (over / exo + transcendance th&eacute;oriques)</label>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="chd"><span class="bar"></span><h3>Objectifs &amp; d&eacute;fense</h3><span class="tag">intention</span></div>
+            <div class="field">
+              <label>Objectifs d'optimisation</label>
+              <div id="objChecks" class="chips"></div>
+              <div class="hint">Objectifs = chips neutres, distincts des &eacute;l&eacute;ments color&eacute;s.</div>
+            </div>
+            <div class="field">
+              <label>Options de calcul</label>
+              <label class="check"><input id="forceCrit" type="checkbox"> Forcer 100 % coups critiques</label>
+            </div>
+          </div>
+          <div class="card">
+            <div class="chd"><span class="bar"></span><h3>Contraintes</h3><span class="tag">PA &middot; PM &middot; PO</span></div>
+            <div class="row">
+              <div class="field mini"><label for="paVise">PA vis&eacute;s</label><input id="paVise" type="number" min="0" max="12" value="12"><label class="check" style="margin-top:6px"><input id="exoPa" type="checkbox"> Exo</label></div>
+              <div class="field mini"><label for="pmVise">PM vis&eacute;s</label><input id="pmVise" type="number" min="0" max="6" value="6"><label class="check" style="margin-top:6px"><input id="exoPm" type="checkbox"> Exo</label></div>
+              <div class="field mini"><label for="poVise">PO vis&eacute;e</label><input id="poVise" type="number" min="0" max="6" value="0"><label class="check" style="margin-top:6px"><input id="exoPo" type="checkbox"> Exo</label></div>
+            </div>
+            <div class="field">
+              <label>Port&eacute;e</label>
+              <div id="rangeSeg" class="seg">
+                <label><input type="radio" name="rangeMode" value="auto" checked><span>Auto</span></label>
+                <label><input type="radio" name="rangeMode" value="melee"><span>M&ecirc;l&eacute;e</span></label>
+                <label><input type="radio" name="rangeMode" value="distance"><span>Distance</span></label>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field mini"><label for="enemies">Ennemis au contact</label><input id="enemies" type="number" min="0" max="12" value="4"></div>
+              <div class="field mini" style="flex:2"><label>Sc&eacute;nario</label><div style="display:flex;gap:14px;margin-top:8px"><label class="check"><input id="phSalle" type="checkbox" checked> Combat en salle</label><label class="check"><input id="phVagues" type="checkbox" checked> Vagues</label></div></div>
+            </div>
+          </div>
+          <div id="err"></div>
+        </div>
+      </div>
+      <div class="nav">
+        <button id="backStep1" class="btn">&larr; Personnage</button>
+        <button id="go" class="btn primary">&#9889; Trouver le stuff optimal <span class="k">~3s</span></button>
+      </div>
+    </div>
+
+    <!-- ============ STEP 3 ============ -->
+    <div id="step3" class="step">
+      <div class="hero">
+        <div class="lab">R&eacute;sultat optimis&eacute;</div>
+        <div id="dmgHead"><b>&mdash;</b> <span class="u">lance l'optimisation pour voir les d&eacute;g&acirc;ts</span></div>
+        <div class="submetrics" id="subMetrics"></div>
+      </div>
+      <div class="editbar">
+        <div class="grp"><label>Source</label>
+          <div id="srcSeg" class="seg">
+            <label><input type="radio" name="src2" value="arme" checked><span>Arme</span></label>
+            <label><input type="radio" name="src2" value="sort"><span>Sort</span></label>
+          </div>
+        </div>
+        <div class="grp"><label>Attaque</label>
+          <div class="row" style="gap:8px">
+            <input id="search2" type="text" placeholder="Rechercher&hellip;" style="min-width:180px">
+            <select id="arme2"></select>
+            <select id="sort2" style="display:none"></select>
+          </div>
+        </div>
+        <div class="grp"><label>Variante</label>
+          <div id="varSeg" class="seg">
+            <label><input type="radio" name="varMode" value="salle" checked><span>Salle</span></label>
+            <label><input type="radio" name="varMode" value="vagues"><span>Vagues</span></label>
+          </div>
+        </div>
+        <div style="flex-basis:100%;display:flex;align-items:center;gap:10px">
+          <div id="optiBar"><span style="width:0"></span></div>
+          <span id="optiPct"></span>
+        </div>
+      </div>
+
+      <div id="out"></div>
+
+      <div class="subgrid">
+        <div id="panoplies"></div>
+        <div id="forgeBox"></div>
+      </div>
+
+      <div class="nav">
+        <button id="backEdit" class="btn">&larr; Modifier les objectifs</button>
+        <span></span>
+      </div>
+    </div>
+
+    <div id="appVer">2026.07.15-1537</div>
   </div>
+</div>
+<script>(function(){var v=document.getElementById('appVer');if(!v)return;var t=v.textContent.trim();v.textContent=(t==='@@'+'BUILD@@')?'Optimiseur Dofus 3 · dev (local)':('Optimiseur Dofus 3 · v '+t);})();
+window.addEventListener('load',function(){try{if(typeof DATA!=='undefined'&&DATA.__meta&&DATA.__meta.date){var v=document.getElementById('appVer');if(v)v.textContent+=' · données '+DATA.__meta.date+(DATA.__meta.patch?(' ('+DATA.__meta.patch+')'):'');}}catch(e){}});</script>
 
 <!-- ======================= DATA ======================= -->
 <script>
@@ -856,51 +739,65 @@ function totalPA(S,paBase,exoPa){ return paBase+(S['PA']||0)+(exoPa?1:0); }
    ne peut avoir ni over ni exo (les deux options s'excluent par item). Poids issus des tables de forgemagie.
    Heuristique demandée : over crit en priorité sur les items qui ONT déjà du crit (pour franchir 100%),
    items sans crit -> transcendance %Do. Caps par défaut (éditables via FORGE_CFG). */
-const FORGE_DENS=101;               // densité over+exo max cumulée par item
-// cap = jet TOTAL max de la stat sur un item (base incluse) = arrondi(101/poids). poids = densité par +1.
-const FORGE_CFG={ crit:{poids:10,cap:5}, docrit:{poids:5,cap:20}, pui:{poids:2,cap:50}, transPct:3 };
+const FORGE_DENS=101;               // Σ(over+exo)×poids ≤ 101 par item (règle Dofus 3, cf REFERENCE_forgemagie_dofus3.md)
+// poids (densité) par +1 de stat, et cap de LIGNE réaliste = arrondi(101/poids)
+const FORGE_W={ do:5, docrit:5, pui:2, crit:10, pctdo:15 };
+const FORGE_LINECAP={ do:20, docrit:20, pui:50, crit:10, pctdo:6 };
 const FORGE_NOPOOL={dt:1, familier:1, monture:1, montilier:1};   // Dofus/trophées, familiers, montures : NON forgeables
 function __forgeTag(){ if(DATA.__forgeTagged)return; DATA.__forgeTagged=true;
   for(const p in DATA.items){ for(const it of DATA.items[p]) it.__pool=p; }
   for(const it of (DATA.pets||[])) it.__pool='familier'; }
 function applyForge(build, ctx, S, detail){
+  // Modèle forgemagie Dofus 3 : par item, Σ(over+exo)×poids ≤ 101. Over = stat présente (au-delà du max),
+  // exo = stat absente. Transcendance (exclusive) dominée par l'over pour du pur dégât -> non utilisée.
   __forgeTag();
-  const isW=ctx.isWeapon, F=FORGE_CFG;
-  let ccNow=Math.min(100,(ctx.baseCC||0)+(S['Coups Critiques']||0));
-  let need=Math.max(0,100-ccNow);
+  const isW=ctx.isWeapon;
+  const el=ctx.atkElement || (ctx.targetElements&&ctx.targetElements[0]) || 'Neutre';
+  const doKey=ELEM_FLAT[el]||('Do '+el);
+  const pctKey=isW?'% Do Armes':'% Do Sorts';
   const items=[];
   for(let i=0;i<build.length;i++){ const it=build[i]; if(!it||!it.n)continue;
-    if(it.pr || FORGE_NOPOOL[it.__pool]) continue;        // exclut Dofus, trophées, prysmaradites, familiers, montures
-    items.push({i,it,baseCrit:(it.s&&it.s['Coups Critiques'])||0,baseDC:(it.s&&it.s['Do Critiques'])||0,basePui:(it.s&&it.s['Puissance'])||0,dens:FORGE_DENS,crit:0,trans:false,lines:[]}); }
-  items.sort((a,b)=>b.baseCrit-a.baseCrit);               // items à crit de base d'abord
-  let addCrit=0,addDoCrit=0,addPui=0,addPctA=0,addPctS=0;
-  const over=(base,add,st)=> base>0 ? `${st} ${base}→${base+add} (over)` : `+${add} ${st} (exo)`;
-  // 1) crit -> 100% : over (base>0) prioritaire, exo sinon ; TOTAL base+add ≤ cap
-  for(const o of items){ if(need<=0)break;
-    const room=Math.min(F.crit.cap-Math.min(o.baseCrit,F.crit.cap), need, Math.floor(o.dens/F.crit.poids));
-    if(room>0){ addCrit+=room; o.dens-=room*F.crit.poids; need-=room; o.crit=room; o.lines.push(over(o.baseCrit,room,'crit')); }
+    if(it.pr || FORGE_NOPOOL[it.__pool]) continue;        // Dofus/trophées/prysma/familiers/montures : non forgeables
+    items.push({i,it,s:it.s||{},dens:FORGE_DENS,used:false,lines:[]}); }
+  const add={}; const A=(k,v)=>{ if(v>0) add[k]=(add[k]||0)+v; };
+  const line=(o,base,inc,label)=> o.lines.push(base>0?`${label} ${base}→${base+inc}`:`+${inc} ${label} (exo)`);
+
+  // 1) EXO PA/PM/PO demandés : 1 seul item chacun, stat ABSENTE, sature l'item (PA=100, PM=90, PO=51 densité)
+  const exoReq=[]; if(ctx.exoPa)exoReq.push(['PA',100]); if(ctx.exoPm)exoReq.push(['PM',90]); if(ctx.exoPo)exoReq.push(['PO',51]);
+  for(const er of exoReq){ const stat=er[0], poids=er[1];
+    const o=items.find(x=>!x.used && !(x.s[stat]>0) && x.dens>=poids);
+    if(o){ o.used=true; o.dens=0; o.lines.push(`+1 ${stat} (exo)`); if(detail) detail.push({i:o.i,name:o.it.n,trans:false,lines:o.lines.slice()}); }
   }
-  // 2) items sans crit et non utilisés -> transcendance %Do (exclusif : pas d'over/exo) ; sinon over/exo Do Crit puis Puissance
-  for(const o of items){
-    if(o.baseCrit===0 && !o.crit){
-      o.trans=true;
-      if(isW){ addPctA+=F.transPct; o.lines.push(`transc. +${F.transPct}% Do armes`); }
-      else   { addPctS+=F.transPct; o.lines.push(`transc. +${F.transPct}% Do sorts`); }
-    } else {
-      let d=o.dens;
-      const dcRoom=Math.min(Math.max(0,F.docrit.cap-Math.min(o.baseDC,F.docrit.cap)), Math.floor(d/F.docrit.poids));
-      if(dcRoom>0){ addDoCrit+=dcRoom; d-=dcRoom*F.docrit.poids; o.lines.push(over(o.baseDC,dcRoom,'Do Crit')); }
-      const puRoom=Math.min(Math.max(0,F.pui.cap-Math.min(o.basePui,F.pui.cap)), Math.floor(d/F.pui.poids));
-      if(puRoom>0){ addPui+=puRoom; d-=puRoom*F.pui.poids; o.lines.push(over(o.basePui,puRoom,'Puissance')); }
-      o.dens=d;
-    }
-    if(detail && o.lines.length) detail.push({i:o.i, name:o.it.n, trans:o.trans, lines:o.lines});
+
+  // 2) crit à 100% : UNIQUEMENT si "Forcer 100% crit" est coché
+  const baseCCg=Math.min(100,(ctx.baseCC||0)+(S['Coups Critiques']||0));
+  let critNeed = ctx.forceCrit ? Math.max(0,100-baseCCg) : 0;
+  const critP = baseCCg/100;
+  const B = ctx.baseTotal||30;
+  const doFirst = B<40;   // Do élément plus efficace que Puissance si base/coup < 40
+
+  for(const o of items){ if(o.used) continue; let d=o.dens;
+    // a) crit -> 100% (si forcé) : over si présent, exo sinon
+    if(critNeed>0 && d>=FORGE_W.crit){ const base=o.s['Coups Critiques']||0;
+      const room=Math.min(critNeed, FORGE_LINECAP.crit-Math.min(base,FORGE_LINECAP.crit), Math.floor(d/FORGE_W.crit));
+      if(room>0){ A('Coups Critiques',room); critNeed-=room; d-=room*FORGE_W.crit; line(o,base,room,'Coups Critiques'); } }
+    // b) dégâts : Do élément & Puissance (ordre selon la base par coup)
+    const doStep=()=>{ const base=o.s[doKey]||0; const room=Math.min(FORGE_LINECAP.do-Math.min(base,FORGE_LINECAP.do), Math.floor(d/FORGE_W.do));
+      if(room>0){ A(doKey,room); d-=room*FORGE_W.do; line(o,base,room,doKey); } };
+    const puStep=()=>{ const base=o.s['Puissance']||0; const room=Math.min(FORGE_LINECAP.pui-Math.min(base,FORGE_LINECAP.pui), Math.floor(d/FORGE_W.pui));
+      if(room>0){ A('Puissance',room); d-=room*FORGE_W.pui; line(o,base,room,'Puissance'); } };
+    if(doFirst){ doStep(); puStep(); } else { puStep(); doStep(); }
+    // c) Do Critiques : seulement si le crit est pertinent (forcé ou déjà élevé)
+    if((ctx.forceCrit||critP>=0.5) && d>=FORGE_W.docrit){ const base=o.s['Do Critiques']||0;
+      const room=Math.min(FORGE_LINECAP.docrit-Math.min(base,FORGE_LINECAP.docrit), Math.floor(d/FORGE_W.docrit));
+      if(room>0){ A('Do Critiques',room); d-=room*FORGE_W.docrit; line(o,base,room,'Do Critiques'); } }
+    // d) % Do (armes/sorts) avec le reliquat, ligne ≤ 6
+    { const base=o.s[pctKey]||0; const room=Math.min(FORGE_LINECAP.pctdo-Math.min(base,FORGE_LINECAP.pctdo), Math.floor(d/FORGE_W.pctdo));
+      if(room>0){ A(pctKey,room); d-=room*FORGE_W.pctdo; line(o,base,room,pctKey); } }
+    o.dens=d;
+    if(detail && o.lines.length) detail.push({i:o.i, name:o.it.n, trans:false, lines:o.lines});
   }
-  if(addCrit)  S['Coups Critiques']=(S['Coups Critiques']||0)+addCrit;
-  if(addDoCrit)S['Do Critiques']  =(S['Do Critiques']  ||0)+addDoCrit;
-  if(addPui)   S['Puissance']     =(S['Puissance']     ||0)+addPui;
-  if(addPctA)  S['% Do Armes']    =(S['% Do Armes']    ||0)+addPctA;
-  if(addPctS)  S['% Do Sorts']    =(S['% Do Sorts']    ||0)+addPctS;
+  for(const k in add) S[k]=(S[k]||0)+add[k];
   return S;
 }
 
@@ -982,7 +879,7 @@ function evalBuild(build, ctx){
     if(!any) obj=turn/(M.deg||1); }
   else obj=turn/(M.deg||1);
   // les pénalités (≥1e4 si contrainte violée) dominent l'objectif (≤ ~6) -> contraintes d'abord
-  return {turn,per,casts,pa,pm,po,effCC,okPA,okPM,okCC,okCond,condBad,S, obj, bonusPA, perEl, dfPct:(S['__df']||0), score: obj - penalty};
+  return {turn,per,casts,cost:ctx.cost,pa,pm,po,effCC,okPA,okPM,okCC,okCond,condBad,S, obj, bonusPA, perEl, dfPct:(S['__df']||0), score: obj - penalty};
 }
 
 // candidats par slot filtrés par niveau + pré-tri heuristique (dégâts + objectifs actifs) + rétention panoplie
@@ -1396,7 +1293,7 @@ function solvePhase(cfg, wave){
   // ---------- init listes ----------
   function fillClasses(){ if(!$('classe'))return; $('classe').innerHTML=Object.keys(DATA.spells).map(c=>`<option>${c}</option>`).join(''); }
   function buildObjChecks(){ const h=$('objChecks'); if(!h)return;
-    h.innerHTML=OBJECTIVES.filter(o=>o.key!=='deg').map(o=>`<label class="chip"><input type="checkbox" id="w_${o.key}"><span>${o.label}</span></label>`).join(''); }
+    h.innerHTML=OBJECTIVES.filter(o=>o.key!=='deg').map(o=>`<label class="chip obj"><input type="checkbox" id="w_${o.key}"><span class="ck">✓</span><span>${o.label}</span></label>`).join(''); }
   function fillAttacks(){
     if($('arme2')){ __armeOpts='<option value="">— arme —</option>'+DATA.weapons.slice().sort((a,b)=>a.n.localeCompare(b.n)).map(w=>`<option value="${w.id}">${w.n} (niv ${w.lv})</option>`).join(''); $('arme2').innerHTML=__armeOpts; }
     fillSpells2();
@@ -1448,12 +1345,12 @@ function solvePhase(cfg, wave){
     if(fg&&fg.length){ for(const l of fg) li+='<li class="fgline">🔨 '+l+'</li>'; }   // forgemagie appliquée (en bleu)
     if(!li) li='<li class="dl">—</li>';
     return '<ul>'+li+'</ul>'; }
-  function slotHTML(slot,it,fg){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:(ICON[slot]||'✦');
+  function slotHTML(slot,it,fg){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:`<span class="emo">${ICON[slot]||'✦'}</span>`;
     const fgd=(fg&&fg.length)?' data-fg':'';
-    return `<div class="slot"${fgd}><div class="ico">${ic}</div><div class="meta"><div class="nm">${it.n}</div><div class="ty">${SLOT[slot]||slot}</div></div><div class="tip"><div class="tnm">${it.n}</div>${tipBody(it,fg)}</div></div>`; }
-  function dslotHTML(it,fg){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:(/troph/i.test(it.n)?'🏆':'🔮');
+    return `<div class="slot"${fgd} title="${(it.n||'').replace(/"/g,'&quot;')}">${ic}<div class="tip"><div class="tnm">${it.n}</div>${tipBody(it,fg)}</div></div>`; }
+  function dslotHTML(it,fg){ const ic=it.img?`<img src="${it.img}" alt="" loading="lazy">`:`<span class="emo">${/troph/i.test(it.n)?'🏆':'🔮'}</span>`;
     const fgd=(fg&&fg.length)?' data-fg':'';
-    return `<div class="dslot"${fgd}>${ic}<div class="dnm">${it.n}</div><div class="tip"><div class="tnm">${it.n}</div>${tipBody(it,fg)}</div></div>`; }
+    return `<div class="dslot"${fgd} title="${(it.n||'').replace(/"/g,'&quot;')}">${ic}<div class="tip"><div class="tnm">${it.n}</div>${tipBody(it,fg)}</div></div>`; }
 
   function statsLeftHTML(r){
     const S=r.res.S||{}, cx=r.ctxUsed||{}, el=r.atkElement, invest=r.invest||0;
@@ -1488,37 +1385,52 @@ function solvePhase(cfg, wave){
   }
   function weaponSlotHTML(w,cx){
     if(!w) return '';
-    const ic=w.img?`<img src="${w.img}" alt="" loading="lazy">`:'⚔️';
+    const ic=w.img?`<img src="${w.img}" alt="" loading="lazy">`:'<span class="emo">⚔️</span>';
     const ls=(cx&&cx.lines)||[];
     let dl=ls.map(l=>`<li class="dl">${l.mn}-${l.mx} ${l.el}${(l.cmn||l.cmx)?` · crit ${l.cmn||l.mn}-${l.cmx||l.mx}`:''}</li>`).join('');
     const st=w.s||{}; let sl=''; for(const k in st){ const v=st[k]; if(!v)continue; const suf=/^%/.test(k)?'%':''; sl+=`<li>${k}<b>${v>0?'+':''}${R(v)}${suf}</b></li>`; }
     const pa=(w.w&&w.w.pa)?` · ${w.w.pa} PA`:'';
-    return `<div class="slot wslot"><div class="ico">${ic}</div><div class="meta"><div class="nm">${w.n}</div><div class="ty">Arme${pa}</div></div><div class="tip"><div class="tnm">${w.n}</div><ul>${dl}${sl}</ul></div></div>`;
+    return `<div class="slot wslot" title="${(w.n||'').replace(/"/g,'&quot;')}">${ic}<div class="tip"><div class="tnm">${w.n}${pa}</div><ul>${dl}${sl}</ul></div></div>`;
   }
   function forgeMapFor(r){ const det=forgeDetailFor(r); const m={}; if(det) for(const d of det) m[d.i]=d.lines; return m; }
   function buildCenterHTML(r,cx){
     const fmap=forgeMapFor(r);
     const gear=[], dts=[];
     (r.build||[]).forEach((it,i)=>{ if(!it)return; const s=r.slots[i]; if(s==='dt') dts.push([it,i]); else gear.push([s,it,i]); });
-    const half=Math.ceil(gear.length/2), L=gear.slice(0,half), Rr=gear.slice(half);
+    const items=gear.map(g=>slotHTML(g[0],g[1],fmap[g[2]]));
+    if(cx&&cx.weapon) items.push(weaponSlotHTML(cx.weapon,cx));
+    const half=Math.ceil(items.length/2);
+    const colL=`<div class="pd-col">${items.slice(0,half).join('')}</div>`;
+    const colR=`<div class="pd-col">${items.slice(half).join('')}</div>`;
     const elem=(r.atkElement)||(cx.targetElements&&cx.targetElements.join('/'))||'';
-    const sil=`<div class="build-col"><div class="silhouette"><div><div class="cls">${cx.classe||''}${elem?' — '+elem:''}</div><div>Niveau ${cx.lv||200}</div></div></div>${weaponSlotHTML(cx.weapon,cx)}</div>`;
-    const colL=`<div class="build-col">${L.map(g=>slotHTML(g[0],g[1],fmap[g[2]])).join('')}</div>`;
-    const colR=`<div class="build-col">${Rr.map(g=>slotHTML(g[0],g[1],fmap[g[2]])).join('')}</div>`;
-    const dof=`<div class="dofus-row">${dts.map(d=>dslotHTML(d[0],fmap[d[1]])).join('')}</div>`;
-    const pano=panopliesHTML(r);
-    return `<div class="build"><div class="build-grid">${colL}${sil}${colR}</div>${dof}${pano}${forgeHTML(r)}</div>`;
+    const figure=`<div class="figure"><div class="fcrest">✦</div><div class="fcaption">${cx.classe||''}${elem?' — '+elem:''}<br>Niveau ${cx.lv||200}</div></div>`;
+    const dof=dts.length?`<div class="dofsec">Dofus &amp; Trophées</div><div class="dofrow">${dts.map(d=>dslotHTML(d[0],fmap[d[1]])).join('')}</div>`:'';
+    const nItems=gear.length+(cx&&cx.weapon?1:0);
+    const head=`<div class="build-head"><div><h4>Équipement optimal</h4><small>${nItems} objets · ${dts.length} dofus/trophées${cx&&cx.forgeMax?' · forge maximale':''}</small></div></div>`;
+    return `${head}<div class="paperdoll">${colL}${figure}${colR}</div>${dof}`;
   }
   function forgeDetailFor(r){ const cx=r.ctxUsed||__res.cfg||{}; if(!cx.forgeMax||typeof applyForge!=='function')return null;
     try{ const S0=aggregate(r.build, cx.weapon?{s:cx.weapon.s,set:cx.weapon.set}:null); const det=[]; applyForge(r.build, cx, S0, det); return det; }catch(e){ return null; } }
-  function forgeHTML(r){ const det=forgeDetailFor(r); if(!det||!det.length)return'';
-    return '<div id="forgeBox"><h4>🔨 Forge maximale (théorique)</h4>'+det.map(d=>`<div class="pano"><span class="pn">${d.name}${d.trans?' <em>(transcendé)</em>':''}</span> <span class="pb">— ${d.lines.join(', ')}</span></div>`).join('')+'</div>'; }
-  function panopliesHTML(r){ const sets=activeSets(r.build, r.ctxUsed&&r.ctxUsed.weapon); if(!sets.length)return'<div id="panoplies" style="display:none"></div>';
-    return '<div id="panoplies"><h4>Bonus de panoplie</h4>'+sets.map(s=>`<div class="pano"><span class="pn">${s.name} (${s.count})</span> <span class="pb">— ${s.bonuses.map(b=>(b.v>0?'+':'')+b.v+' '+b.st).join(', ')}</span></div>`).join('')+'</div>';
+  function forgeInner(r){ const det=forgeDetailFor(r); if(!det||!det.length)return'';
+    return '<h4>🔨 Forge maximale (théorique)</h4>'+det.map(d=>`<div class="pano"><span class="pt">${d.name}${d.trans?' (transcendé)':''}</span><span class="pv">${d.lines.join(' · ')}</span></div>`).join(''); }
+  function panopliesInner(r){ const sets=activeSets(r.build, r.ctxUsed&&r.ctxUsed.weapon); if(!sets.length)return'';
+    return '<h4>Bonus de panoplie</h4>'+sets.map(s=>`<div class="pano"><span class="pt">${s.name} (${s.count})</span><span class="pv">${s.bonuses.map(b=>(b.v>0?'+':'')+b.v+' '+b.st).join(' · ')}</span></div>`).join('');
   }
   function dmgHeadHTML(r){
-    if(r && r.__attackDmg){ const res=r.res; const df=res.dfPct?` · <span class="small">DF passifs +${Math.round(res.dfPct)}%</span>`:''; return `<b>${fmt(res.per)}</b> dégâts / coup · ${res.casts}× = <b>${fmt(res.turn)}</b>/tour${df}`; }
-    return `<span class="small">Choisis une arme ou un sort pour voir les dégâts</span>`;
+    if(r && r.__attackDmg){ const res=r.res; const perPA=(res.cost>0)?res.per/res.cost:0;
+      return `<b>${fmt(res.per)}</b> <span class="u">dégâts / coup</span> <span class="sep">·</span> <b>${fmt(res.turn)}</b> <span class="u">/ tour</span> <span class="sep">·</span> <b>${fmt(perPA)}</b> <span class="u">/ PA</span> <span class="sep">·</span> <span class="u">${res.casts}× à ${res.cost||'?'} PA</span>`;
+    }
+    return `<b>—</b> <span class="u">choisis une arme ou un sort pour voir les dégâts</span>`;
+  }
+  function subMetricsHTML(r){
+    const res=r.res||{}; const crit=Math.round(res.effCC||0); const df=Math.round(res.dfPct||0);
+    const perPA=(res.cost>0)?fmt(res.per/res.cost):'—';
+    return `<div class="metric crit"><i>Dégâts / PA</i><b>${perPA}</b></div>`
+      +`<div class="metric"><i>Critique</i><b>${crit}%</b></div>`
+      +`<div class="metric"><i>Dommages finaux</i><b>${df>0?'+':''}${df}%</b></div>`
+      +`<div class="metric"><i>PA</i><b>${R(res.pa)}</b></div>`
+      +`<div class="metric"><i>PM</i><b>${R(res.pm)}</b></div>`
+      +`<div class="metric"><i>Portée</i><b>${R(res.po)}</b></div>`;
   }
 
   function currentVariant(){ const v=(document.querySelector('input[name="varMode"]:checked')||{}).value; if(v&&__res&&__res[v])return v; if(__res&&__res.salle)return'salle'; if(__res&&__res.vagues)return'vagues'; return null; }
@@ -1528,7 +1440,12 @@ function solvePhase(cfg, wave){
   function renderVariant(which){
     if(!__res||!__res[which])return; const r=__res[which], cx=r.ctxUsed||__res.cfg||{};
     if($('dmgHead')) $('dmgHead').innerHTML=dmgHeadHTML(r);
-    if($('out')) $('out').innerHTML=`<div class="col" id="statsLeft">${statsLeftHTML(r)}</div><div id="buildCenter">${buildCenterHTML(r,cx)}</div><div class="col" id="statsRight">${statsRightHTML(r)}</div>`;
+    if($('subMetrics')) $('subMetrics').innerHTML=r.__attackDmg?subMetricsHTML(r):'';
+    if($('out')) $('out').innerHTML=`<div class="col" id="statsLeft">${statsLeftHTML(r)}</div><div id="buildCenter" class="build">${buildCenterHTML(r,cx)}</div><div class="col" id="statsRight">${statsRightHTML(r)}</div>`;
+    const pi=panopliesInner(r), fi=forgeInner(r);
+    if($('panoplies')){ $('panoplies').innerHTML=pi; $('panoplies').style.display=pi?'':'none'; }
+    if($('forgeBox')){ $('forgeBox').innerHTML=fi; $('forgeBox').style.display=fi?'':'none'; }
+    const sg=document.querySelector('.subgrid'); if(sg) sg.style.display=(pi||fi)?'':'none';
   }
   function renderCurrent(){ const w=currentVariant(); syncVarSeg(); if(w) renderVariant(w); }
 
@@ -1574,9 +1491,9 @@ function solvePhase(cfg, wave){
     if($('phSalle') && $('phSalle').checked) steps.push(['salle',false]);
     if($('phVagues') && $('phVagues').checked) steps.push(['vagues',true]);
     if(!steps.length) steps.push(['salle',false]);
-    if($('out')) $('out').innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center"><div style="margin-bottom:12px;font-weight:600">⚙️ Optimisation (recherche approfondie)…</div><div style="height:12px;max-width:520px;margin:0 auto;background:rgba(255,255,255,.10);border-radius:8px;overflow:hidden"><i id="optiBar" style="display:block;height:100%;width:2%;background:linear-gradient(90deg,#c9a24a,#f3d98a);transition:width .3s ease"></i></div><div id="optiPct" style="margin-top:8px;font-size:12px;opacity:.65">0 %</div></div>';
+    if($('out')) $('out').innerHTML='<div style="grid-column:1/-1;padding:44px 20px;text-align:center;color:var(--ink-dim);font-family:Cinzel;letter-spacing:.04em">⚙️ Optimisation (recherche approfondie)…</div>';
     if($('dmgHead')) $('dmgHead').innerHTML='<span class="small">Calcul en cours…</span>';
-    var bar=2; function setBar(v){ bar=v; var b=$('optiBar'),p=$('optiPct'); if(b)b.style.width=Math.round(v)+'%'; if(p)p.textContent=Math.round(v)+' %'; }
+    var bar=2; function setBar(v){ bar=v; var b=document.querySelector('#optiBar>span')||$('optiBar'),p=$('optiPct'); if(b)b.style.width=Math.round(v)+'%'; if(p)p.textContent=Math.round(v)+' %'; }
     function onTick(){ setBar(bar+(96-bar)*0.035); }
     function finish(){ setBar(100);
       if(cfg.src==='arme' && $('arme2')){ var _r=[].slice.call(document.querySelectorAll('input[name="src2"]')).filter(function(x){return x.value==='arme';})[0]; if(_r)_r.checked=true; $('arme2').value=cfg.armeId; if(typeof toggleSrc==='function')toggleSrc(); }
