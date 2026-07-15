@@ -498,7 +498,7 @@
       </div>
     </div>
 
-    <div id="appVer">2026.07.15-1801</div>
+    <div id="appVer">2026.07.15-2008</div>
   </div>
 </div>
 <script>(function(){var v=document.getElementById('appVer');if(!v)return;var t=v.textContent.trim();v.textContent=(t==='@@'+'BUILD@@')?'Optimiseur Dofus 3 · dev (local)':('Optimiseur Dofus 3 · v '+t);})();
@@ -743,6 +743,15 @@ const FORGE_DENS=101;               // Σ(over+exo)×poids ≤ 101 par item (rè
 // poids (densité) par +1 de stat, et cap de LIGNE réaliste = arrondi(101/poids)
 const FORGE_W={ do:5, docrit:5, pui:2, crit:10, pctdo:15 };
 const FORGE_LINECAP={ do:20, docrit:20, pui:50, crit:10, pctdo:6 };
+const FORGE_STATW={ // [poids, over max = 101/poids] par stat d'objectif — cf REFERENCE_forgemagie_dofus3.md
+  'Vitalité':[0.25,404],
+  'Rés Neutre':[2,50],'Rés Terre':[2,50],'Rés Feu':[2,50],'Rés Eau':[2,50],'Rés Air':[2,50],
+  '% Rés Neutre':[6,16],'% Rés Terre':[6,16],'% Rés Feu':[6,16],'% Rés Eau':[6,16],'% Rés Air':[6,16],
+  'Tacle':[4,25],'Fuite':[4,25],'Soins':[10,10],'Prospection':[3,33],'Sagesse':[3,33],
+  'Retrait PA':[7,14],'Retrait PM':[7,14],'Esquive PA':[7,14],'Esquive PM':[7,14] };
+const FORGE_OBJSTATS={ // stats forgées par objectif (ordre = priorité) ; % Rés Mêlée/Distance et Rés Critiques : pas de runes → non forgées
+  survie:['Vitalité','% Rés Neutre','% Rés Terre','% Rés Feu','% Rés Eau','% Rés Air','Rés Neutre','Rés Terre','Rés Feu','Rés Eau','Rés Air'],
+  tacle:['Tacle'], soin:['Soins'], prospe:['Prospection'], retPA:['Retrait PA'], retPM:['Retrait PM'] };
 const FORGE_NOPOOL={dt:1, familier:1, monture:1, montilier:1};   // Dofus/trophées, familiers, montures : NON forgeables
 function __forgeTag(){ if(DATA.__forgeTagged)return; DATA.__forgeTagged=true;
   for(const p in DATA.items){ for(const it of DATA.items[p]) it.__pool=p; }
@@ -776,16 +785,28 @@ function applyForge(build, ctx, S, detail){
   let critNeed = ctx.forceCrit ? Math.max(0,100-baseCCg) : 0;
   const critP = baseCCg/100;
 
+  // over « règle brute » pour les stats d'objectifs : over max = 101/poids AU-DESSUS de la base (le jet naturel ne compte pas dans la densité)
+  const overAbs=(o,stat,poids,overCap)=>{ const base=o.s[stat]||0; if(base<=0) return;
+    const room=Math.min(overCap, Math.floor(o.dens/poids));
+    if(room>0){ A(stat,room); o.dens-=room*poids; o.lines.push(`${stat} ${base}→${base+room}`); } };
+  // objectifs actifs triés par poids décroissant (cascade : le dominant d'abord, le budget restant au suivant)
+  const W=ctx.weights||{};
+  const objOrder=Object.keys(W).filter(k=>(W[k]||0)>0).sort((a,b)=>(W[b]||0)-(W[a]||0));
+  if(!objOrder.length && dmgIntent) objOrder.push('deg');
+  const overDeg=(o)=>{
+    over(o,doKey,FORGE_W.do,FORGE_LINECAP.do);            // Do élément (over)
+    over(o,'Puissance',FORGE_W.pui,FORGE_LINECAP.pui);    // Puissance (over)
+    over(o,'% Do Armes',FORGE_W.pctdo,FORGE_LINECAP.pctdo);
+    over(o,'% Do Sorts',FORGE_W.pctdo,FORGE_LINECAP.pctdo);
+    if(ctx.forceCrit||critP>=0.9) over(o,'Do Critiques',FORGE_W.docrit,FORGE_LINECAP.docrit); // utile seulement proche 100% crit
+  };
   for(const o of items){ if(o.used) continue;
     if(critNeed>0){ const base=o.s['Coups Critiques']||0; if(base>0){
       const room=Math.min(critNeed, FORGE_LINECAP.crit-Math.min(base,FORGE_LINECAP.crit), Math.floor(o.dens/FORGE_W.crit));
       if(room>0){ A('Coups Critiques',room); critNeed-=room; o.dens-=room*FORGE_W.crit; o.lines.push(`Coups Critiques ${base}→${base+room}`); } } }
-    if(dmgIntent){
-      over(o,doKey,FORGE_W.do,FORGE_LINECAP.do);            // Do élément (over)
-      over(o,'Puissance',FORGE_W.pui,FORGE_LINECAP.pui);    // Puissance (over)
-      over(o,'% Do Armes',FORGE_W.pctdo,FORGE_LINECAP.pctdo);
-      over(o,'% Do Sorts',FORGE_W.pctdo,FORGE_LINECAP.pctdo);
-      if(ctx.forceCrit||critP>=0.9) over(o,'Do Critiques',FORGE_W.docrit,FORGE_LINECAP.docrit); // utile seulement proche 100% crit
+    for(const k of objOrder){
+      if(k==='deg'){ if(dmgIntent||(W.deg||0)>0) overDeg(o); continue; }
+      for(const st of (FORGE_OBJSTATS[k]||[])){ const pw=FORGE_STATW[st]; if(pw) overAbs(o,st,pw[0],pw[1]); }
     }
     if(detail && o.lines.length) detail.push({i:o.i, name:o.it.n, trans:false, lines:o.lines});
   }
@@ -1105,7 +1126,7 @@ function buildCtx(cfg, wave, atkOverride){
   if(targetElements) atkElement=targetElements[0];                 // pour caracs scriptées / conditions
   if(cfg.rangeMode==='melee'){ canMelee=true; canRange=false; melee=true; }
   else if(cfg.rangeMode==='distance'){ canMelee=false; canRange=true; melee=false; }
-  return {lv:cfg.lv,isWeapon,melee,canMelee,canRange,maxUses,targetElements,baseTotal,lines,cost,atkElement,baseCC,weapon,
+  return {lv:cfg.lv,src:cfg.src,isWeapon,melee,canMelee,canRange,maxUses,targetElements,baseTotal,lines,cost,atkElement,baseCC,weapon,
     invest: investedElementStat(cfg.lv,false), parcho: (cfg.parcho===true)?{Force:100,Intelligence:100,Chance:100,Agilité:100,Vitalité:100,Sagesse:100}:(cfg.parcho||null),
     forceCrit:cfg.forceCrit, paBase:6+(cfg.lv>=100?1:0), pmBase:3, // +1 PA au niveau 100
     exoPa:cfg.exoPa,exoPm:cfg.exoPm,exoPo:cfg.exoPo,minPa:cfg.paVise,minPm:cfg.pmVise,minPo:cfg.poVise||0,
